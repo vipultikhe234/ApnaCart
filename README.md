@@ -1,6 +1,8 @@
 # 🍱 FoodHub: The AI-Powered Merchant Ecosystem
 
-![FoodHub Hero Mockup](https://raw.githubusercontent.com/vipultikhe234/FoodHub/main/docs/hero.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vipultikhe234/FoodHub/main/docs/hero.png" alt="FoodHub Hero Mockup">
+</p>
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-18/19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
