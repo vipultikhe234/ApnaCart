@@ -85,8 +85,8 @@ const StripePayment = ({ clientSecret, orderId, onSucceeded, onFailed, onCancel 
 
                 <div className="p-10 pt-12">
                     <div className="mb-8">
-                        <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic leading-none">Complete Payment</h2>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-3 italic">Order #ORD-{String(orderId).padStart(4, '0')}</p>
+                        <h2 className="text-2xl lg:text-3xl font-[800] text-gray-900 dark:text-white uppercase tracking-tighter italic leading-none font-['Outfit']">Complete Payment</h2>
+                        <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-3 italic leading-none">Order #ORD-{String(orderId).padStart(4, '0')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -96,15 +96,15 @@ const StripePayment = ({ clientSecret, orderId, onSucceeded, onFailed, onCancel 
 
                             <div className="relative z-10 flex items-center gap-2 mb-3">
                                 <ShieldAlert size={14} className="text-orange-500" />
-                                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest leading-none italic">Test Mode Active</p>
+                                <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest leading-none italic">Test Mode Active</p>
                             </div>
 
                             <div className="relative z-10 flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-2xl border border-orange-100/50 dark:border-white/5 shadow-sm mb-3">
-                                <span className="font-black text-gray-900 dark:text-white tracking-[0.1em] text-sm">{testCard}</span>
+                                <span className="font-bold text-gray-900 dark:text-white tracking-[0.1em] text-sm">{testCard}</span>
                                 <button
                                     type="button"
                                     onClick={copyTestCard}
-                                    className={`text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${copied ? 'bg-green-50 text-green-600' : 'bg-gray-900 text-white hover:bg-orange-600'}`}
+                                    className={`text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${copied ? 'bg-green-50 text-green-600' : 'bg-gray-900 text-white hover:bg-orange-600'}`}
                                 >
                                     {copied ? <CheckCircle2 size={12} /> : <Copy size={12} />}
                                     {copied ? 'Copied' : 'Copy'}
@@ -120,7 +120,7 @@ const StripePayment = ({ clientSecret, orderId, onSucceeded, onFailed, onCancel 
                         {/* Card Fields */}
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3 pl-2">Card Information</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-2 italic">Card Information</label>
                                 <div className="p-5 bg-gray-50 dark:bg-gray-700/50 rounded-[28px] border border-gray-100 dark:border-gray-600 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all">
                                     <CardNumberElement options={{ ...ELEMENT_STYLE, showIcon: true }} />
                                 </div>
@@ -137,7 +137,7 @@ const StripePayment = ({ clientSecret, orderId, onSucceeded, onFailed, onCancel 
                         </div>
 
                         {error && (
-                            <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-red-100 flex items-center gap-2">
+                            <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-red-100 flex items-center gap-2 italic">
                                 <AlertCircle size={14} /> {error}
                             </div>
                         )}
@@ -145,9 +145,9 @@ const StripePayment = ({ clientSecret, orderId, onSucceeded, onFailed, onCancel 
                         <button
                             type="submit"
                             disabled={processing || !stripe}
-                            className={`w-full py-6 rounded-full font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${processing || !stripe
+                            className={`w-full py-6 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 italic ${processing || !stripe
                                 ? 'bg-gray-100 text-gray-400'
-                                : 'bg-gray-900 text-white hover:bg-orange-600'}`}
+                                : 'bg-slate-900 text-white shadow-indigo-600/10 hover:bg-indigo-600'}`}
                         >
                             {processing ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

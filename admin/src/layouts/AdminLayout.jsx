@@ -12,9 +12,12 @@ import {
     Bell,
     Settings,
     Search,
-    ChevronRight,
-    CircleDot,
-    ShieldCheck
+    ShieldCheck,
+    Menu,
+    X as CloseIcon,
+    Moon,
+    Sun,
+    Command
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,6 +26,7 @@ const AdminLayout = () => {
     const location = useLocation();
     const [user, setUser] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
@@ -32,7 +36,29 @@ const AdminLayout = () => {
         }
         const storedUser = localStorage.getItem('user');
         if (storedUser) setUser(JSON.parse(storedUser));
+
+        // Sync dark mode state with document
+        if (document.documentElement.classList.contains('dark')) {
+            setIsDarkMode(true);
+        }
     }, [navigate]);
+
+    const toggleDarkMode = () => {
+        const newMode = !isDarkMode;
+        setIsDarkMode(newMode);
+        if (newMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    };
+
+    // Close sidebar on mobile when route changes
+    useEffect(() => {
+        if (window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+        }
+    }, [location.pathname]);
 
     const handleLogout = async () => {
         try {
@@ -55,137 +81,145 @@ const AdminLayout = () => {
         { to: '/users', label: 'Users', icon: UsersIcon },
     ];
 
-    const currentPathLabel = navLinks.find(l => l.to === location.pathname)?.label || 'Admin';
-
     return (
-        <div className="flex h-screen bg-[#FDFDFD] dark:bg-[#0B0F1A] overflow-hidden font-sans">
-            {/* Premium Sidebar */}
+        <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
+            {/* Sidebar Overlay for Mobile */}
+            <AnimatePresence>
+                {isSidebarOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-[60] lg:hidden"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Side Navigation */}
             <motion.aside
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="w-72 bg-white dark:bg-[#111827] flex flex-col border-r border-gray-100 dark:border-white/5 shrink-0 z-50 relative"
+                initial={false}
+                animate={{
+                    x: isSidebarOpen ? 0 : -300,
+                    width: isSidebarOpen ? 280 : 0,
+                    opacity: isSidebarOpen ? 1 : 0
+                }}
+                className={`fixed lg:relative h-full bg-white dark:bg-zinc-900 flex flex-col border-r border-zinc-200 dark:border-zinc-800 shrink-0 z-[70] overflow-hidden lg:translate-x-0 ${isSidebarOpen ? 'w-64' : 'w-0'}`}
             >
                 {/* Brand Identity */}
-                <div className="px-8 py-10">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-600 rounded-[18px] flex items-center justify-center shadow-xl shadow-indigo-600/20 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Soup className="text-white relative z-10" size={24} strokeWidth={2.5} />
+                <div className="px-6 py-6 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <Command className="text-white" size={18} strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-[900] text-gray-900 dark:text-white tracking-tighter leading-tight font-['Outfit'] italic">
-                                FoodHub
-                            </h1>
-                            <p className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">Admin Panel</p>
+                            <h1 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-tight leading-none">FoodHub</h1>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Admin Node</p>
                         </div>
                     </div>
+                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-zinc-400">
+                        <CloseIcon size={18} />
+                    </button>
                 </div>
 
                 {/* Navigation Menu */}
-                <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pt-6">
-                    <p className="px-5 mb-4 text-[10px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-[0.2em] italic">General</p>
+                <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-6 custom-scrollbar">
+                    <p className="px-4 mb-4 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Global Register</p>
                     {navLinks.map(({ to, label, icon: Icon }) => {
-                        const isActive = location.pathname === to;
+                        const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
                         return (
                             <Link
                                 key={to}
                                 to={to}
-                                className={`flex items-center gap-4 py-4 px-6 rounded-[24px] transition-all duration-300 group relative ${isActive
-                                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/10'
-                                    : 'text-slate-400 dark:text-gray-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-indigo-600 dark:hover:text-white'
+                                className={`flex items-center gap-3 py-2.5 px-4 rounded-xl transition-all duration-200 group ${isActive
+                                    ? 'bg-zinc-900 dark:bg-emerald-500 text-white shadow-lg shadow-zinc-900/10 dark:shadow-emerald-500/10'
+                                    : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                                     }`}
                             >
-                                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                <span className={`text-[11px] font-[900] uppercase tracking-widest leading-none ${isActive ? 'text-white' : 'text-slate-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-white'}`}>
-                                    {label}
-                                </span>
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="activeNavIndicator"
-                                        className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]"
-                                    />
-                                )}
+                                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white'} />
+                                <span className="text-xs font-bold tracking-tight">{label}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
-                {/* User Context & Actions */}
-                <div className="p-8 mt-auto border-t border-gray-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                {/* User Context */}
+                <div className="p-4 mt-auto border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                     {user && (
-                        <div className="mb-8 flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-premium relative border border-gray-100 dark:border-white/5">
-                                <span className="font-[900] text-indigo-600 dark:text-indigo-400 font-['Outfit'] italic text-lg">{user.name?.[0]?.toUpperCase()}</span>
-                                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
+                        <div className="mb-4 flex items-center gap-3 px-2">
+                            <div className="w-9 h-9 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm relative shrink-0">
+                                <span className="font-bold text-zinc-900 dark:text-white text-xs">{user.name?.[0]?.toUpperCase()}</span>
+                                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full"></div>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-black text-gray-900 dark:text-white text-[10px] uppercase tracking-wider truncate leading-tight mb-1">{user.name}</p>
-                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none italic">{user.role || 'Administrator'}</p>
+                                <p className="font-bold text-zinc-900 dark:text-white text-[10px] truncate">{user.name}</p>
+                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none mt-1">Super Admin</p>
                             </div>
                         </div>
                     )}
-                    <motion.button
-                        whileTap={{ scale: 0.95 }}
+                    <button
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-3 py-5 rounded-[22px] text-rose-500 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-500 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest border border-rose-100 dark:border-rose-500/20 shadow-sm"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all font-bold text-[10px] tracking-widest uppercase border border-transparent hover:border-red-100 dark:hover:border-red-900/50"
                     >
-                        <LogOut size={16} strokeWidth={2.5} /> Logout
-                    </motion.button>
+                        <LogOut size={16} /> Logout
+                    </button>
                 </div>
             </motion.aside>
 
-            {/* Stage Frame */}
+            {/* Main Stage */}
             <main className="flex-1 flex flex-col overflow-hidden relative">
-                {/* Global Command Center Header */}
-                <header className="h-[100px] px-12 flex justify-between items-center bg-white/80 dark:bg-[#0B0F1A]/80 backdrop-blur-2xl border-b border-gray-100 dark:border-white/5 sticky top-0 z-40">
-                    <div className="flex items-center gap-8">
-                        <div className="flex flex-col">
-                            <h2 className="text-3xl font-[900] text-gray-900 dark:text-white uppercase tracking-tighter italic leading-none font-['Outfit']">
-                                {currentPathLabel}
-                            </h2>
-                            <div className="flex items-center gap-2 mt-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"></span>
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 italic">System Online</span>
-                            </div>
+                {/* Header */}
+                <header className="h-[64px] px-6 lg:px-8 flex justify-between items-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
+                    <div className="flex items-center gap-6">
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="p-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all border border-zinc-200 dark:border-zinc-800 lg:hidden"
+                        >
+                            <Menu size={20} />
+                        </button>
+
+                        <div className="hidden lg:flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Node Sync Active</span>
                         </div>
 
-                        {/* Visual Separator */}
-                        <div className="h-10 w-px bg-slate-100 dark:bg-white/10"></div>
-
-                        {/* Search Node */}
-                        <div className="hidden lg:flex items-center gap-4 px-6 py-3.5 bg-slate-50 dark:bg-white/5 rounded-[22px] border border-transparent focus-within:border-indigo-500/30 focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:shadow-xl transition-all w-80">
-                            <Search size={18} className="text-slate-300 transition-colors" />
+                        {/* Search Input */}
+                        <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 w-64 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500/50 transition-all">
+                            <Search size={16} className="text-zinc-400" />
                             <input
                                 type="text"
-                                placeholder="Search records..."
-                                className="bg-transparent border-none outline-none text-xs font-bold text-gray-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-gray-600 w-full"
+                                placeholder="Universal search..."
+                                className="bg-transparent border-none outline-none text-[10px] font-bold text-zinc-900 dark:text-white w-full uppercase tracking-wider"
                             />
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-8">
-                        <div className="flex items-center gap-4">
-                            <motion.button whileTap={{ scale: 0.9 }} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-white/10 rounded-2xl transition-all relative shadow-sm border border-transparent hover:border-gray-100">
-                                <Bell size={20} strokeWidth={2.5} />
-                                <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-[#0B0F1A]"></span>
-                            </motion.button>
-                            <motion.button whileTap={{ scale: 0.9 }} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-white/10 rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100">
-                                <Settings size={20} strokeWidth={2.5} />
-                            </motion.button>
+                    <div className="flex items-center gap-4 lg:gap-6">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={toggleDarkMode}
+                                className="p-2.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-all"
+                            >
+                                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                            </button>
+                            <button className="p-2.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-all relative">
+                                <Bell size={20} />
+                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-950"></span>
+                            </button>
                         </div>
 
-                        <div className="h-10 w-px bg-slate-100 dark:bg-white/10"></div>
+                        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
 
-                        <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-6 py-3 rounded-[20px] flex items-center gap-3 shadow-sm">
-                            <ShieldCheck size={16} strokeWidth={2.5} />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">Secure Portal</span>
+                        <div className="hidden sm:flex bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-lg items-center gap-2 border border-emerald-100 dark:border-emerald-950">
+                            <ShieldCheck size={14} strokeWidth={2.5} />
+                            <span className="text-[9px] font-bold uppercase tracking-widest">Certified</span>
                         </div>
                     </div>
                 </header>
 
-                {/* Scrollable Canvas */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-12 bg-[#FDFDFD] dark:bg-[#0B0F1A]">
-                    <div className="max-w-[1600px] mx-auto">
+                {/* Viewport */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-zinc-50 dark:bg-zinc-950">
+                    <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
                         <Outlet />
                     </div>
                 </div>

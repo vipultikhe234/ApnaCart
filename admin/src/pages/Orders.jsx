@@ -19,25 +19,29 @@ import {
     Package,
     IndianRupee,
     Ticket,
-    SearchX
+    SearchX,
+    ShoppingCart,
+    Loader2,
+    ShieldCheck,
+    Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const STATUS_CONFIG = {
-    pending: { color: 'text-amber-600', dot: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10', label: 'Pending' },
-    preparing: { color: 'text-indigo-600', dot: 'bg-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10', label: 'Preparing' },
-    dispatched: { color: 'text-violet-600', dot: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10', label: 'Dispatched' },
-    delivered: { color: 'text-emerald-600', dot: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10', label: 'Delivered' },
-    cancelled: { color: 'text-rose-600', dot: 'bg-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10', label: 'Cancelled' },
+    pending: { color: 'text-amber-600', dot: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', label: 'Pending' },
+    preparing: { color: 'text-blue-600', dot: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Preparing' },
+    dispatched: { color: 'text-zinc-600', dot: 'bg-zinc-500', bg: 'bg-zinc-50 dark:bg-zinc-800/50', label: 'Dispatched' },
+    delivered: { color: 'text-emerald-600', dot: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/20', label: 'Delivered' },
+    cancelled: { color: 'text-red-600', dot: 'bg-red-500', bg: 'bg-red-50 dark:bg-red-900/20', label: 'Cancelled' },
 };
 
 const PAY_STATUS = {
     paid: 'bg-emerald-500 text-white',
-    pending: 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-gray-400',
-    failed: 'bg-rose-500 text-white',
-    refunded: 'bg-indigo-500 text-white',
+    pending: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400',
+    failed: 'bg-red-500 text-white',
+    refunded: 'bg-zinc-900 text-white',
 };
 
 const Orders = () => {
@@ -56,9 +60,11 @@ const Orders = () => {
         try {
             setLoading(true);
             const response = await orderService.getAllOrders();
-            setOrders(response.data.data);
+            const data = response.data.data || response.data || [];
+            setOrders(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Error fetching orders:', error);
+            setOrders([]);
         } finally {
             setLoading(false);
         }
@@ -137,36 +143,31 @@ const Orders = () => {
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] animate-pulse">Syncing Orders...</p>
+            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+            <p className="text-zinc-500 font-medium text-sm animate-pulse tracking-tight">Syncing order node...</p>
         </div>
     );
 
     return (
         <Elements stripe={stripePromise}>
-            <div className="space-y-12 pb-20 font-sans">
+            <div className="space-y-8 pb-20 font-sans">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 bg-white dark:bg-[#111827] p-10 rounded-[48px] shadow-premium border border-gray-100 dark:border-white/5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
-
-                    <div className="space-y-2 relative z-10">
-                        <h1 className="text-4xl font-[900] text-gray-900 dark:text-white uppercase tracking-tighter italic font-['Outfit'] leading-none">Orders</h1>
-                        <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-indigo-600 shadow-[0_0_8px_#4f46e5]"></div>
-                            <p className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest italic leading-none">{orders.length} Records in Cloud</p>
-                        </div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Orders</h1>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-sm">Monitor and manage customer transactions.</p>
                     </div>
-
                     <button
                         onClick={fetchOrders}
-                        className="relative z-10 group flex items-center gap-4 bg-slate-900 dark:bg-indigo-600 text-white px-10 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] hover:bg-slate-800 transition-all shadow-2xl shadow-indigo-600/10 active:scale-95 italic"
+                        className="bg-zinc-900 dark:bg-emerald-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold transition-all shadow-lg shadow-zinc-900/10 dark:shadow-emerald-500/20 text-[10px] uppercase tracking-[0.2em]"
                     >
-                        <RefreshCw size={18} strokeWidth={2.5} className="group-hover:rotate-180 transition-transform duration-500" /> Sync Database
+                        <RefreshCw size={14} className={updatingId ? 'animate-spin' : ''} />
+                        Sync Registry
                     </button>
                 </div>
 
                 {/* KPI Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {['pending', 'preparing', 'dispatched', 'delivered', 'cancelled'].map((key) => {
                         const cfg = STATUS_CONFIG[key];
                         const count = statusCounts[key] || 0;
@@ -174,18 +175,18 @@ const Orders = () => {
                         return (
                             <motion.button
                                 key={key}
-                                whileHover={{ y: -5 }}
+                                whileHover={{ y: -4 }}
                                 onClick={() => setFilterStatus(isActive ? 'all' : key)}
-                                className={`p-8 rounded-[40px] border-2 transition-all text-left relative overflow-hidden ${isActive
-                                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-2xl shadow-indigo-600/20'
-                                    : 'border-gray-100 dark:border-white/5 bg-white dark:bg-[#111827] hover:border-indigo-600/30 shadow-premium'
+                                className={`p-4 rounded-2xl border transition-all text-left relative overflow-hidden group ${isActive
+                                    ? 'border-zinc-900 dark:border-emerald-500 bg-zinc-900 dark:bg-emerald-500 text-white shadow-xl'
+                                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm'
                                     }`}
                             >
-                                <div className={`flex items-center gap-3 mb-4`}>
-                                    <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-white shadow-[0_0_8px_white]' : cfg.dot}`}></div>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest leading-none italic ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>{cfg.label}</span>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : cfg.dot}`}></div>
+                                    <span className={`text-[9px] font-bold uppercase tracking-widest ${isActive ? 'text-white/70' : 'text-zinc-400'}`}>{cfg.label}</span>
                                 </div>
-                                <p className={`text-4xl font-[900] italic tracking-tighter font-['Outfit'] leading-none ${isActive ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                                <p className={`text-2xl font-bold tracking-tight ${isActive ? 'text-white' : 'text-zinc-900 dark:text-white'}`}>
                                     {count}
                                 </p>
                             </motion.button>
@@ -194,27 +195,27 @@ const Orders = () => {
                 </div>
 
                 {/* Order Table Card */}
-                <div className="bg-white dark:bg-[#111827] rounded-[56px] shadow-premium border border-gray-100 dark:border-white/5 overflow-hidden">
+                <div className="bg-white dark:bg-zinc-900 rounded-[28px] border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full text-left">
+                        <table className="min-w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-50/50 dark:bg-white/[0.02] text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic">
-                                    <th className="px-12 py-8">Order ID</th>
-                                    <th className="py-8 px-6">Customer</th>
-                                    <th className="py-8 px-6">Total Amount</th>
-                                    <th className="py-8 px-6">Payment</th>
-                                    <th className="py-8 px-6">Status</th>
-                                    <th className="py-8 px-6">Action</th>
-                                    <th className="px-12 py-8 text-right">Details</th>
+                                <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-wider font-semibold">
+                                    <th className="px-6 py-4">Reference</th>
+                                    <th className="py-4 px-4">Customer</th>
+                                    <th className="py-4 px-4">Valuation</th>
+                                    <th className="py-4 px-4 text-center">Payment</th>
+                                    <th className="py-4 px-4 text-center">Status</th>
+                                    <th className="py-4 px-4 text-center">Update</th>
+                                    <th className="px-6 py-4 text-right">Details</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                                 {filteredOrders.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" className="py-32 text-center text-slate-300">
+                                        <td colSpan="7" className="py-24 text-center">
                                             <div className="flex flex-col items-center justify-center opacity-30">
-                                                <SearchX size={64} strokeWidth={1} />
-                                                <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-6">No matching records found</p>
+                                                <SearchX size={48} className="text-zinc-400" />
+                                                <p className="text-xs font-bold uppercase tracking-widest mt-4 text-zinc-500">No matching transactions</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -226,81 +227,70 @@ const Orders = () => {
 
                                         return (
                                             <React.Fragment key={order.id}>
-                                                <tr className={`group transition-all duration-500 ${isExpanded ? 'bg-indigo-50/30 dark:bg-indigo-600/5' : 'hover:bg-slate-50/50 dark:hover:bg-white/[0.02]'}`}>
-                                                    <td className="px-12 py-7">
+                                                <tr className={`group transition-all duration-300 ${isExpanded ? 'bg-zinc-50/50 dark:bg-zinc-800/20' : 'hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30'}`}>
+                                                    <td className="px-6 py-4">
                                                         <div className="flex flex-col">
-                                                            <p className="font-[900] text-gray-900 dark:text-white uppercase tracking-tighter text-xl italic leading-none font-['Outfit']">#ORD-{String(order.id).padStart(4, '0')}</p>
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5 italic">
-                                                                {order.created_at ? new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
-                                                            </p>
+                                                            <p className="font-bold text-zinc-900 dark:text-white tracking-tight text-sm mb-0.5 uppercase">#ORD-{String(order.id).padStart(4, '0')}</p>
+                                                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
                                                         </div>
                                                     </td>
-                                                    <td className="py-7 px-6">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-premium border border-slate-100 dark:border-white/5 font-[900] text-lg font-['Outfit'] italic text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                                                {order.user?.name?.[0]?.toUpperCase() || '?'}
+                                                    <td className="py-4 px-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm text-[10px] font-bold text-zinc-500 group-hover:text-emerald-500 transition-colors uppercase">
+                                                                {order.user?.name?.[0] || '?'}
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="font-black text-gray-900 dark:text-white text-[11px] uppercase tracking-widest leading-none mb-1">{order.user?.name || 'Guest'}</p>
-                                                                <p className="text-[9px] text-slate-400 font-bold italic truncate max-w-[140px] uppercase leading-none">{order.user?.email || '—'}</p>
+                                                                <p className="font-bold text-zinc-900 dark:text-white text-[11px] truncate uppercase">{order.user?.name || 'Guest'}</p>
+                                                                <p className="text-[9px] text-zinc-400 font-bold tracking-widest truncate max-w-[100px] uppercase">{order.user?.phone || 'N/A'}</p>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="py-7 px-6">
-                                                        <div className="flex items-end gap-1">
-                                                            <span className="text-xs font-black text-indigo-600 mb-1">₹</span>
-                                                            <span className="font-[900] text-gray-900 dark:text-white tracking-tighter text-3xl font-['Outfit'] italic leading-none">
-                                                                {parseFloat(order.total_price).toFixed(0)}
-                                                            </span>
-                                                        </div>
+                                                    <td className="py-4 px-4">
+                                                        <span className="font-bold text-zinc-900 dark:text-white tracking-tight text-sm">₹{parseFloat(order.total_price).toFixed(0)}</span>
                                                     </td>
-                                                    <td className="py-7 px-6">
-                                                        <div className="space-y-2">
+                                                    <td className="py-4 px-4 text-center">
+                                                        <div className="flex flex-col items-center gap-1.5">
                                                             <select
                                                                 value={order.payment_status || 'pending'}
                                                                 onChange={(e) => handlePaymentStatusChange(order.id, e.target.value)}
                                                                 disabled={isUpdating}
-                                                                className={`appearance-none px-4 py-1.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] italic w-fit outline-none cursor-pointer border-none shadow-sm ${PAY_STATUS[order.payment_status] || PAY_STATUS.pending}`}
+                                                                className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest outline-none border-none shadow-sm ${PAY_STATUS[order.payment_status] || PAY_STATUS.pending}`}
                                                             >
                                                                 <option value="pending">Pending</option>
                                                                 <option value="paid">Paid</option>
                                                                 <option value="failed">Failed</option>
                                                                 <option value="refunded">Refunded</option>
                                                             </select>
-                                                            <div className="flex items-center gap-1.5 pl-2">
-                                                                <div className={`w-1 h-1 rounded-full ${order.payment?.payment_method === 'cod' ? 'bg-orange-500' : 'bg-indigo-500'}`}></div>
-                                                                <span className="text-[9px] font-black text-slate-300 uppercase italic tracking-widest">{order.payment?.payment_method || 'COD'}</span>
-                                                            </div>
+                                                            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{order.payment?.payment_method || 'COD'}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="py-7 px-6">
-                                                        <div className={`inline-flex items-center gap-2.5 px-5 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-sm ${cfg.bg} ${cfg.color}`}>
-                                                            <span className={`w-2 h-2 rounded-full ${cfg.dot} ${order.status === 'pending' ? 'animate-pulse shadow-[0_0_6px_currentColor]' : ''}`}></span>
+                                                    <td className="py-4 px-4 text-center">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${cfg.bg} ${cfg.color} border border-transparent`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}></span>
                                                             {cfg.label}
-                                                        </div>
+                                                        </span>
                                                     </td>
-                                                    <td className="py-7 px-6">
+                                                    <td className="py-4 px-4 text-center">
                                                         <select
                                                             value={order.status}
                                                             onChange={(e) => handleStatusChange(order.id, e.target.value)}
                                                             disabled={isUpdating}
-                                                            className="bg-slate-50 dark:bg-gray-800 text-slate-700 dark:text-gray-300 text-[10px] font-black uppercase rounded-2xl px-5 py-3 outline-none focus:ring-4 focus:ring-indigo-600/5 border border-slate-100 dark:border-white/5 tracking-widest cursor-pointer shadow-inner"
+                                                            className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-[9px] font-bold uppercase rounded-xl px-2.5 py-1.5 outline-none border border-zinc-200 dark:border-zinc-700 tracking-widest cursor-pointer shadow-inner"
                                                         >
-                                                            <option value="pending">Pending</option>
-                                                            <option value="preparing">Prepare</option>
-                                                            <option value="dispatched">Dispatch</option>
-                                                            <option value="delivered">Deliver</option>
-                                                            <option value="cancelled">Cancel</option>
+                                                            <option value="pending">Wait</option>
+                                                            <option value="preparing">Prep</option>
+                                                            <option value="dispatched">Ship</option>
+                                                            <option value="delivered">Done</option>
+                                                            <option value="cancelled">Void</option>
                                                         </select>
                                                     </td>
-                                                    <td className="px-12 py-7 text-right">
-                                                        <motion.button
-                                                            whileTap={{ scale: 0.9 }}
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button
                                                             onClick={() => setExpandedId(isExpanded ? null : order.id)}
-                                                            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isExpanded ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-xl' : 'bg-slate-50 dark:bg-gray-800 text-slate-400 hover:text-indigo-600 shadow-sm border border-slate-100 dark:border-white/5'}`}
+                                                            className={`p-2 rounded-lg transition-all ${isExpanded ? 'bg-zinc-900 dark:bg-emerald-500 text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
                                                         >
-                                                            {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
-                                                        </motion.button>
+                                                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                        </button>
                                                     </td>
                                                 </tr>
 
@@ -310,94 +300,69 @@ const Orders = () => {
                                                             initial={{ opacity: 0, height: 0 }}
                                                             animate={{ opacity: 1, height: 'auto' }}
                                                             exit={{ opacity: 0, height: 0 }}
-                                                            className="bg-slate-50/30 dark:bg-white/[0.01]"
+                                                            className="bg-zinc-50/30 dark:bg-zinc-950/20"
                                                         >
-                                                            <td colSpan={7} className="px-12 py-10">
+                                                            <td colSpan={7} className="p-8">
                                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                                                                    {/* Order Items Section */}
-                                                                    <div className="space-y-6">
-                                                                        <div className="flex items-center gap-3 pl-2">
-                                                                            <Package size={16} className="text-indigo-600" />
-                                                                            <p className="text-[11px] font-[900] text-slate-400 uppercase tracking-[0.4em] italic leading-none">Order Content</p>
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center gap-2 mb-4">
+                                                                            <Package size={14} className="text-zinc-400" />
+                                                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">Package manifest</span>
                                                                         </div>
-                                                                        <div className="space-y-4">
+                                                                        <div className="space-y-3">
                                                                             {order.items?.map(item => (
-                                                                                <div key={item.id} className="flex items-center gap-6 bg-white dark:bg-[#111827] p-6 rounded-[32px] border border-slate-100 dark:border-white/5 shadow-premium group/item">
-                                                                                    <div className="w-16 h-16 bg-slate-50 dark:bg-gray-900 rounded-2xl overflow-hidden shrink-0 border border-slate-50 dark:border-white/5 group-hover/item:scale-110 transition-transform">
+                                                                                <div key={item.id} className="flex items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                                                                    <div className="w-12 h-12 bg-zinc-50 dark:bg-zinc-800 rounded-xl overflow-hidden shrink-0 border border-zinc-100 dark:border-zinc-800">
                                                                                         {item.product?.image_url ? (
                                                                                             <img src={item.product.image_url} className="w-full h-full object-cover" alt={item.product.name} />
                                                                                         ) : (
-                                                                                            <div className="w-full h-full flex items-center justify-center opacity-30"><Package size={24} /></div>
+                                                                                            <div className="w-full h-full flex items-center justify-center opacity-30 text-zinc-400"><Package size={16} /></div>
                                                                                         )}
                                                                                     </div>
                                                                                     <div className="flex-1">
-                                                                                        <p className="font-[900] text-gray-900 dark:text-white text-base tracking-tight font-['Outfit'] italic uppercase leading-none mb-2">{item.product?.name || 'Product'}</p>
-                                                                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none">Quantity: {item.quantity}</p>
+                                                                                        <p className="font-bold text-zinc-900 dark:text-white text-xs uppercase">{item.product?.name || 'Product'}</p>
+                                                                                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mt-1">QTY: {item.quantity}</p>
                                                                                     </div>
                                                                                     <div className="text-right">
-                                                                                        <p className="text-xl font-[900] text-indigo-600 font-['Outfit'] italic tracking-tighter">₹{parseFloat(item.price * item.quantity).toFixed(0)}</p>
+                                                                                        <p className="text-sm font-bold text-zinc-900 dark:text-white">₹{parseFloat(item.price * item.quantity).toFixed(0)}</p>
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Metadata Section */}
-                                                                    <div className="space-y-8">
-                                                                        <div className="space-y-4">
-                                                                            <div className="flex items-center gap-3 pl-2">
-                                                                                <MapPin size={16} className="text-indigo-600" />
-                                                                                <p className="text-[11px] font-[900] text-slate-400 uppercase tracking-[0.4em] italic leading-none">Delivery Target</p>
+                                                                    <div className="space-y-6">
+                                                                        <div className="space-y-3">
+                                                                            <div className="flex items-center gap-2 px-2">
+                                                                                <MapPin size={12} className="text-zinc-400" />
+                                                                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">Destination</span>
                                                                             </div>
-                                                                            <div className="bg-white dark:bg-[#111827] p-8 rounded-[32px] border border-slate-100 dark:border-white/5 shadow-premium">
-                                                                                <p className="text-sm font-bold text-slate-600 dark:text-gray-300 italic leading-relaxed">{order.address || 'Standard System Location'}</p>
-                                                                            </div>
+                                                                            <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 italic uppercase leading-relaxed">
+                                                                                {order.address || 'Standard Location'}
+                                                                            </p>
                                                                         </div>
 
-                                                                        <div className="space-y-4">
-                                                                            <div className="flex items-center gap-3 pl-2">
-                                                                                <IndianRupee size={16} className="text-indigo-600" />
-                                                                                <p className="text-[11px] font-[900] text-slate-400 uppercase tracking-[0.4em] italic leading-none">Financial Breakdown</p>
+                                                                        <div className="bg-zinc-900 dark:bg-zinc-800 p-6 rounded-2xl text-white space-y-4 shadow-xl">
+                                                                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest opacity-60">
+                                                                                <span>Methods</span>
+                                                                                <span>{order.payment?.payment_method?.toUpperCase()}</span>
                                                                             </div>
-                                                                            <div className="bg-white dark:bg-[#111827] p-8 rounded-[36px] border border-slate-100 dark:border-white/5 shadow-premium space-y-4">
-                                                                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                                                                    <span className="text-slate-400">Net Method</span>
-                                                                                    <span className="text-slate-700 dark:text-white italic">{order.payment?.payment_method?.toUpperCase() || 'COD'}</span>
+                                                                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest opacity-60">
+                                                                                <span>Subtotal</span>
+                                                                                <span>₹{(order.total_price + (parseFloat(order.discount) || 0)).toFixed(0)}</span>
+                                                                            </div>
+                                                                            {parseFloat(order.discount) > 0 && (
+                                                                                <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-emerald-400">
+                                                                                    <span>Bonus Apply</span>
+                                                                                    <span>-₹{parseFloat(order.discount).toFixed(0)}</span>
                                                                                 </div>
-                                                                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                                                                    <span className="text-slate-400">Order Subtotal</span>
-                                                                                    <span className="text-slate-700 dark:text-white italic">₹{parseFloat(order.total_price + parseFloat(order.discount || 0)).toFixed(0)}</span>
+                                                                            )}
+                                                                            <div className="pt-4 mt-2 border-t border-white/10 flex justify-between items-end">
+                                                                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Total</span>
+                                                                                <div className="flex items-end gap-1">
+                                                                                    <span className="text-xs font-bold mb-1 opacity-60">₹</span>
+                                                                                    <span className="text-3xl font-bold tracking-tighter leading-none">{parseFloat(order.total_price).toFixed(0)}</span>
                                                                                 </div>
-                                                                                {order.coupon && (
-                                                                                    <div className="flex justify-between items-center">
-                                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Coupon Bonus</span>
-                                                                                        <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-600/10 rounded-xl border border-indigo-100 dark:border-indigo-600/20">
-                                                                                            <Ticket size={12} className="text-indigo-600" />
-                                                                                            <span className="text-[10px] font-black text-indigo-600 uppercase italic leading-none">{order.coupon.code}</span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                )}
-                                                                                {parseFloat(order.discount) > 0 && (
-                                                                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                                                                        <span className="text-slate-400">Campaign Discount</span>
-                                                                                        <span className="text-rose-500 italic">-₹{parseFloat(order.discount).toFixed(0)}</span>
-                                                                                    </div>
-                                                                                )}
-                                                                                <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex justify-between items-end">
-                                                                                    <span className="text-[11px] font-[900] uppercase tracking-[0.3em] font-['Outfit'] italic">Grand Total</span>
-                                                                                    <div className="flex items-end gap-1">
-                                                                                        <span className="text-lg font-black text-indigo-600 mb-2 italic">₹</span>
-                                                                                        <span className="text-5xl font-[900] text-gray-900 dark:text-white tracking-tighter font-['Outfit'] italic leading-none">
-                                                                                            {parseFloat(order.total_price).toFixed(0)}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                </div>
-                                                                                {order.payment?.transaction_id && (
-                                                                                    <div className="pt-4 mt-2 flex justify-between items-center border-t border-slate-50 dark:border-white/5">
-                                                                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">Txn Index</span>
-                                                                                        <span className="text-[10px] font-mono text-slate-400 truncate max-w-[180px]">{order.payment.transaction_id}</span>
-                                                                                    </div>
-                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     </div>

@@ -1,36 +1,33 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import StatCard from '../components/StatCard';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import {
     TrendingUp,
-    ArrowUpRight,
     Clock,
-    Calendar,
     Wallet,
     Ticket,
     Package,
     Users as UsersIcon,
-    ArrowRight,
+    ShoppingCart,
+    ShoppingBag,
     Loader2,
     AlertCircle,
     Activity,
     CheckCircle2,
-    ShoppingCart,
-    BarChart3
+    ChevronRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const STATUS_CONFIG = {
-    pending: { color: 'bg-amber-500', text: 'text-amber-600', bg: 'bg-amber-50', icon: Clock },
-    preparing: { color: 'bg-indigo-500', text: 'text-indigo-600', bg: 'bg-indigo-50', icon: Activity },
-    dispatched: { color: 'bg-violet-500', text: 'text-violet-600', bg: 'bg-violet-50', icon: TrendingUp },
-    delivered: { color: 'bg-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle2 },
-    cancelled: { color: 'bg-rose-500', text: 'text-rose-600', bg: 'bg-rose-50', icon: AlertCircle },
+    pending: { text: 'text-amber-700', bg: 'bg-amber-100', icon: Clock },
+    preparing: { text: 'text-blue-700', bg: 'bg-blue-100', icon: Activity },
+    dispatched: { text: 'text-violet-700', bg: 'bg-violet-100', icon: TrendingUp },
+    delivered: { text: 'text-emerald-700', bg: 'bg-emerald-100', icon: CheckCircle2 },
+    cancelled: { text: 'text-red-700', bg: 'bg-red-100', icon: AlertCircle },
 };
 
 const Dashboard = () => {
-    const { orders, stats, loading, error, handleStatusChange } = useDashboardStats();
+    const { orders, stats, loading, error } = useDashboardStats();
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -46,48 +43,33 @@ const Dashboard = () => {
     };
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-            <div className="relative">
-                <Loader2 className="w-16 h-16 text-indigo-600 animate-spin" strokeWidth={1.5} />
-                <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 animate-pulse"></div>
-            </div>
-            <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.4em] animate-pulse">Syncing Data...</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+            <p className="text-zinc-500 font-medium text-sm animate-pulse tracking-tight">Synchronizing node data...</p>
         </div>
     );
 
     if (error) return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-white dark:bg-[#111827] rounded-[48px] shadow-premium max-w-2xl mx-auto border border-rose-100 dark:border-rose-500/10">
-            <div className="w-24 h-24 bg-rose-50 dark:bg-rose-500/10 rounded-[32px] flex items-center justify-center mb-8">
-                <AlertCircle className="text-rose-500" size={48} strokeWidth={1.5} />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-white dark:bg-zinc-900 rounded-2xl border border-red-100 dark:border-red-900/20 max-w-xl mx-auto shadow-sm">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-center mb-6 text-red-500">
+                <AlertCircle size={32} />
             </div>
-            <h2 className="text-3xl font-[900] text-gray-900 dark:text-white mb-4 font-['Outfit'] tracking-tighter uppercase italic">Error Loading Data</h2>
-            <p className="text-slate-500 dark:text-gray-400 font-medium text-sm mb-10 leading-relaxed italic">{error}</p>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Sync Interrupted</h2>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">{error}</p>
             <button
                 onClick={() => window.location.reload()}
-                className="bg-indigo-600 text-white font-black px-12 py-5 rounded-[24px] shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-3 uppercase text-[10px] tracking-widest"
+                className="bg-zinc-900 dark:bg-emerald-500 text-white px-8 py-3 rounded-xl font-semibold shadow-sm hover:opacity-90 transition-all text-sm"
             >
-                Retry Connection <ArrowRight size={18} />
+                Retry Connection
             </button>
         </div>
     );
 
     const totalOrders = stats?.total_orders ?? orders.length;
     const totalRevenue = stats?.total_revenue ?? orders.reduce((s, o) => s + parseFloat(o.total_price || 0), 0);
-    const totalUsers = stats?.total_users ?? '—';
-    const totalProducts = stats?.total_products ?? '—';
+    const totalUsers = stats?.total_users ?? '0';
+    const totalProducts = stats?.total_products ?? '0';
     const recentCount = stats?.recent_orders_count ?? 0;
-
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (6 - i));
-        const key = d.toISOString().split('T')[0];
-        const dayOrders = orders.filter(o => o.created_at?.startsWith(key));
-        return {
-            day: d.toLocaleDateString('en-US', { weekday: 'short' }),
-            total: dayOrders.reduce((s, o) => s + parseFloat(o.total_price || 0), 0),
-        };
-    });
-    const maxBar = Math.max(...last7Days.map(d => d.total), 1);
 
     const statusBreakdown = ['pending', 'preparing', 'dispatched', 'delivered', 'cancelled'].map(s => ({
         status: s,
@@ -99,125 +81,91 @@ const Dashboard = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="space-y-12 pb-20"
+            className="space-y-8 pb-10"
         >
-            {/* Top Toolbar */}
-            <motion.div variants={itemVariants} className="flex justify-between items-center bg-white dark:bg-[#111827] p-10 rounded-[48px] shadow-premium border border-gray-100 dark:border-white/5 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-indigo-500/10 transition-colors duration-700"></div>
-                <div className="relative z-10">
-                    <h1 className="text-4xl font-[900] text-gray-900 dark:text-white uppercase tracking-tighter italic font-['Outfit'] leading-none">Dashboard</h1>
-                    <div className="flex items-center gap-3 mt-3">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600">
-                            <Calendar size={14} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-slate-400 dark:text-gray-500 text-[11px] font-black uppercase tracking-[0.3em] font-['Outfit'] italic">
-                            Statistics · {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                        </span>
-                    </div>
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Dashboard Overview</h1>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm">Welcome back, here's what's happening in your node today.</p>
                 </div>
-                <Link to="/orders" className="relative z-10 group flex items-center gap-4 bg-indigo-600 text-white px-10 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-600/20 active:scale-95">
-                    View Orders <ArrowRight size={18} strokeWidth={2.5} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-            </motion.div>
+                <div className="flex items-center gap-3">
+                    <Link
+                        to="/orders"
+                        className="bg-zinc-900 dark:bg-emerald-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold transition-all shadow-lg shadow-zinc-900/10 dark:shadow-emerald-500/20 text-[10px] uppercase tracking-[0.2em]"
+                    >
+                        <ShoppingCart className="w-4 h-4" />
+                        Marketplace Intel
+                    </Link>
+                </div>
+            </div>
 
-            {/* Main KPI Grid */}
-            <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            {/* Stat Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {[
-                    { label: 'Total Revenue', val: `₹${Number(totalRevenue).toLocaleString('en-IN')}`, icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500', sub: '+12% growth' },
-                    { label: 'Total Savings', val: `₹${Number(stats?.total_discounts || 0).toLocaleString('en-IN')}`, icon: Ticket, color: 'text-rose-500', bg: 'bg-rose-500', sub: 'Coupon usage' },
-                    { label: 'Total Orders', val: totalOrders, icon: ShoppingCart, color: 'text-indigo-500', bg: 'bg-indigo-500', sub: `${recentCount} today` },
-                    { label: 'Total Users', val: totalUsers, icon: UsersIcon, color: 'text-violet-500', bg: 'bg-violet-500', sub: 'Active members' },
-                    { label: 'Products', val: totalProducts, icon: Package, color: 'text-amber-500', bg: 'bg-amber-500', sub: 'Menu items' }
+                    { label: 'Revenue Flow', val: `₹${Number(totalRevenue).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, color: 'emerald', sub: '+12.5% Velocity' },
+                    { label: 'Rewards Burn', val: `₹${Number(stats?.total_discounts || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Ticket, color: 'amber', sub: 'Coupon utility' },
+                    { label: 'Order Volume', val: totalOrders, icon: ShoppingBag, color: 'blue', sub: `${recentCount} new today` },
+                    { label: 'Network Users', val: totalUsers, icon: UsersIcon, color: 'purple', sub: 'Total accounts' },
+                    { label: 'Inventory Assets', val: totalProducts, icon: Package, color: 'orange', sub: 'Active menu' }
                 ].map((stat, i) => (
                     <motion.div
                         key={i}
-                        whileHover={{ y: -5 }}
-                        className="bg-white dark:bg-[#111827] p-8 rounded-[40px] shadow-premium border border-gray-100 dark:border-white/5 relative overflow-hidden group"
+                        variants={itemVariants}
+                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow group"
                     >
-                        <div className={`absolute top-0 right-0 w-24 h-24 ${stat.bg}/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700`}></div>
-                        <div className={`w-14 h-14 ${stat.bg}/10 ${stat.color} rounded-[20px] flex items-center justify-center mb-6 border border-current/10`}>
-                            <stat.icon size={26} strokeWidth={2.5} />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={`p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 group-hover:scale-110 transition-transform`}>
+                                <stat.icon className="w-5 h-5" />
+                            </div>
+                            <div className={`flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full uppercase tracking-wider`}>
+                                <TrendingUp className="w-3 h-3" />
+                                12%
+                            </div>
                         </div>
-                        <h3 className="text-[9px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-2 font-['Outfit'] italic">{stat.label}</h3>
-                        <p className="text-3xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tighter italic leading-none truncate">{stat.val}</p>
-                        <p className="text-[8px] font-bold text-slate-300 dark:text-gray-700 uppercase tracking-widest mt-4 flex items-center gap-1.5">
-                            <TrendingUp size={10} /> {stat.sub}
-                        </p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-1">{stat.label}</p>
+                        <h3 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">{stat.val}</h3>
+                        <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2 font-medium">{stat.sub}</p>
                     </motion.div>
                 ))}
-            </motion.div>
+            </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Orders Overview */}
-                <motion.div variants={itemVariants} className="xl:col-span-2 bg-white dark:bg-[#111827] rounded-[56px] shadow-premium border border-gray-100 dark:border-white/5 overflow-hidden">
-                    <div className="px-12 py-10 flex justify-between items-center border-b border-gray-50 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
-                        <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-premium border border-gray-100 dark:border-white/5 text-indigo-600">
-                                <Activity size={28} strokeWidth={2.5} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-[900] text-gray-900 dark:text-white uppercase tracking-tight font-['Outfit'] italic">New Orders</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></span>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Live Order Stream</p>
-                                </div>
-                            </div>
+                <motion.div variants={itemVariants} className="xl:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                    <div className="px-8 py-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Recent Orders</h3>
+                            <p className="text-xs text-zinc-500 font-medium">Tracking live node activity</p>
                         </div>
-                        <button className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest hover:bg-indigo-600 hover:text-white px-8 py-3.5 rounded-[20px] transition-all border border-indigo-500/20 shadow-sm active:scale-95">Export PDF</button>
+                        <Link to="/orders" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors uppercase tracking-widest flex items-center gap-1">
+                            View All <ChevronRight className="w-3 h-3" />
+                        </Link>
                     </div>
 
-                    <div className="p-8">
+                    <div className="p-6">
                         {orders.length === 0 ? (
-                            <div className="py-32 text-center bg-slate-50 dark:bg-white/10 rounded-[40px] border-2 border-dashed border-slate-100 dark:border-white/5">
-                                <div className="w-24 h-24 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-8 shadow-premium">
-                                    <ShoppingCart size={40} className="text-slate-200" strokeWidth={1.5} />
-                                </div>
-                                <h4 className="text-xl font-[900] text-gray-900 dark:text-white uppercase tracking-tighter mb-2 font-['Outfit']">No Active Orders</h4>
-                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] italic">The queue is currently clear</p>
+                            <div className="py-20 text-center">
+                                <ShoppingCart size={48} className="text-zinc-100 mx-auto mb-4" />
+                                <p className="text-sm font-medium text-zinc-400 uppercase tracking-widest">No recent traffic</p>
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 {orders.slice(0, 5).map((order) => {
                                     const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-                                    const StatusIcon = cfg.icon;
                                     return (
-                                        <div key={order.id} className="group p-6 bg-[#F9FAFB] dark:bg-white/[0.03] rounded-[36px] border border-transparent hover:border-indigo-100 dark:hover:border-white/10 hover:bg-white dark:hover:bg-gray-800 focus-within:ring-2 focus-within:ring-indigo-500 transition-all duration-500 flex items-center gap-6">
-                                            <div className="w-16 h-16 bg-white dark:bg-gray-700 rounded-[20px] flex items-center justify-center text-indigo-600 shadow-premium border border-slate-50 dark:border-white/5 font-[900] text-2xl font-['Outfit'] italic group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
-                                                {order.user?.name?.[0]?.toUpperCase() || '?'}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-3">
-                                                    <p className="font-[900] text-gray-900 dark:text-white text-base tracking-tight font-['Outfit'] italic uppercase truncate">{order.user?.name || 'Guest User'}</p>
-                                                    <div className="px-3 py-1 bg-white dark:bg-white/5 rounded-full border border-slate-100 dark:border-white/10">
-                                                        <span className="text-[9px] font-black text-slate-400 font-mono tracking-tighter">ORD-{String(order.id).padStart(4, '0')}</span>
-                                                    </div>
+                                        <div key={order.id} className="flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-800/30 rounded-xl border border-zinc-100 dark:border-zinc-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center font-bold text-zinc-400 text-xs">
+                                                    #{order.id.toString().slice(-3)}
                                                 </div>
-                                                <div className="flex items-center gap-4 mt-2">
-                                                    <div className={`flex items-center gap-2 px-4 py-1.5 rounded-2xl ${cfg.bg} ${cfg.text} border border-current/10 shadow-sm`}>
-                                                        <StatusIcon size={12} strokeWidth={3} />
-                                                        <span className="text-[9px] font-black uppercase tracking-widest">{order.status}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 text-slate-400">
-                                                        <Clock size={12} />
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                                    </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-tight">{order.user?.name || 'Guest User'}</p>
+                                                    <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ₹{order.total_price}</p>
                                                 </div>
                                             </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="text-3xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tighter mb-2 transition-colors group-hover:text-indigo-600 italic">
-                                                    ₹{parseFloat(order.total_price).toFixed(0)}
-                                                </p>
-                                                <select
-                                                    value={order.status}
-                                                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                                                    className="appearance-none bg-white dark:bg-gray-900 border-none text-[9px] font-black rounded-xl px-5 py-2.5 outline-none ring-1 ring-slate-100 dark:ring-white/10 focus:ring-2 focus:ring-indigo-500 dark:text-white uppercase cursor-pointer shadow-sm hover:shadow-xl transition-all"
-                                                >
-                                                    <option value="pending">Authorize</option>
-                                                    <option value="preparing">Prepare</option>
-                                                    <option value="dispatched">Dispatch</option>
-                                                    <option value="delivered">Complete</option>
-                                                    <option value="cancelled">Abort</option>
-                                                </select>
+                                            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${cfg.bg} ${cfg.text}`}>
+                                                {order.status}
                                             </div>
                                         </div>
                                     );
@@ -227,73 +175,32 @@ const Dashboard = () => {
                     </div>
                 </motion.div>
 
-                {/* Performance Analytics */}
-                <div className="space-y-10">
-                    <motion.div variants={itemVariants} className="bg-slate-900 rounded-[56px] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5 shadow-indigo-600/10">
-                        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="flex items-center gap-3 mb-10 relative z-10">
-                            <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                                <TrendingUp size={20} strokeWidth={3} className="text-white" />
-                            </div>
-                            <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] font-['Outfit'] italic leading-none">Revenue Growth</p>
-                        </div>
-                        <h3 className="text-2xl font-[900] text-white tracking-tighter font-['Outfit'] mb-10 relative z-10 leading-none uppercase italic">Weekly Progress</h3>
-
-                        <div className="flex items-end gap-4 h-44 relative z-10 px-2 group">
-                            {last7Days.map((d, i) => (
-                                <div key={i} className="flex-1 flex flex-col items-center gap-3 group/bar">
-                                    <div className="relative w-full flex flex-col items-center justify-end h-full">
-                                        <motion.div
-                                            initial={{ height: 0 }}
-                                            animate={{ height: `${Math.max((d.total / maxBar) * 100, 8)}%` }}
-                                            transition={{ duration: 1, delay: i * 0.1, ease: 'easeOut' }}
-                                            className="w-full bg-white/5 group-hover/bar:bg-indigo-500 rounded-t-xl transition-all duration-700 shadow-[0_0_30px_rgba(79,70,229,0)] group-hover/bar:shadow-[0_0_30px_rgba(79,70,229,0.5)] border-t border-white/10"
-                                        />
-                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-xl opacity-0 group-hover/bar:opacity-100 transition-all shadow-2xl scale-75 group-hover/bar:scale-100 pointer-events-none">
-                                            ₹{(d.total / 1000).toFixed(1)}k
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-['Outfit']">{d.day.slice(0, 1)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="bg-white dark:bg-[#111827] rounded-[56px] p-10 shadow-premium border border-gray-100 dark:border-white/5">
-                        <div className="flex items-center gap-3 mb-10">
-                            <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600">
-                                <BarChart3 size={20} strokeWidth={2.5} />
-                            </div>
-                            <p className="text-[11px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.3em] font-['Outfit'] italic leading-none">Orders by Status</p>
-                        </div>
-
-                        <div className="space-y-8">
-                            {statusBreakdown.map(({ status, count }) => {
-                                if (count === 0 && (status === 'dispatched' || status === 'cancelled')) return null;
-                                const percentage = totalOrders > 0 ? (count / totalOrders) * 100 : 0;
+                {/* Status Breakdown */}
+                <motion.div variants={itemVariants} className="space-y-6">
+                    <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                        <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-6">Distribution</h3>
+                        <div className="space-y-6">
+                            {statusBreakdown.map((s) => {
+                                const cfg = STATUS_CONFIG[s.status];
                                 return (
-                                    <div key={status} className="space-y-3">
-                                        <div className="flex justify-between items-end">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-2.5 h-2.5 rounded-full ${STATUS_CONFIG[status]?.color} shadow-sm shadow-current`}></div>
-                                                <span className="text-[11px] font-[900] text-gray-900 dark:text-white uppercase tracking-widest italic">{status}</span>
-                                            </div>
-                                            <span className="text-[11px] font-black text-slate-400 dark:text-gray-600 font-['Outfit'] tracking-tighter">{count} orders</span>
+                                    <div key={s.status} className="space-y-2.5">
+                                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em]">
+                                            <span className="text-zinc-500">{s.status}</span>
+                                            <span className="text-zinc-900 dark:text-white">{s.count}</span>
                                         </div>
-                                        <div className="h-3 bg-slate-50 dark:bg-white/5 rounded-full overflow-hidden p-0.5 border border-slate-100 dark:border-white/5">
+                                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
-                                                animate={{ width: `${percentage}%` }}
-                                                transition={{ duration: 1.5, ease: 'easeOut' }}
-                                                className={`h-full rounded-full ${STATUS_CONFIG[status]?.color} shadow-lg shadow-current/20 border-r border-white/20`}
+                                                animate={{ width: `${Math.min((s.count / (orders.length || 1)) * 100, 100)}%` }}
+                                                className={`h-full ${cfg.bg.replace('100', '500')}`}
                                             />
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
-                    </motion.div>
-                </div>
+                    </div>
+                </motion.div>
             </div>
         </motion.div>
     );
