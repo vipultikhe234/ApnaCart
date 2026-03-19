@@ -1,5 +1,7 @@
 # 🍱 FoodHub: The AI-Powered Merchant Ecosystem
 
+![FoodHub Hero Mockup](docs/hero.png)
+
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-18/19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
 [![AI-Powered](https://img.shields.io/badge/AI-Production_Studio-orange?style=for-the-badge)](https://openai.com/)
