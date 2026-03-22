@@ -33,6 +33,10 @@ const Login = () => {
             const response = await authService.login({ email, password });
             localStorage.setItem('access_token', response.data.access_token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
+            
+            // Sync FCM token after login
+            import('../services/firebase').then(m => m.initializeFirebase());
+
             const from = location.state?.from || '/';
             navigate(from, { replace: true });
         } catch (err) {

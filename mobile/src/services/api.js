@@ -76,7 +76,12 @@ export const authService = {
     login: (data) => api.post('/login', data),
     getProfile: () => api.get('/profile'),
     updateProfile: (data) => api.put('/profile', data),
-    logout: () => {
+    logout: async () => {
+        try {
+            await api.post('/remove-fcm-token').catch(() => {}); // Try to remove token first
+        } catch (e) {
+            console.error('Logout: Failed to remove FCM token', e);
+        }
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
         bustCache('/profile');
@@ -120,6 +125,13 @@ export const couponService = {
 export const addressService = {
     getAddresses: () => api.get('/addresses'),
     addAddress: (data) => api.post('/addresses', data),
+};
+
+// ── FCM Service ────────────────────────────────────────────────────────────
+export const fcmService = {
+    saveToken: (token) => api.post('/save-fcm-token', { fcm_token: token }),
+    removeToken: () => api.post('/remove-fcm-token'),
+    sendManualNotification: (data) => api.post('/send-notification', data),
 };
 
 export default api;
