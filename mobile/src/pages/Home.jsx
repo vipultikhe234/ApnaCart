@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { productService } from '../services/api';
+import { productService, addressService } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     MapPin,
@@ -279,7 +279,6 @@ const Home = () => {
                                         if (!newAddress.trim()) return;
                                         setIsSavingAddress(true);
                                         try {
-                                            const { addressService } = await import('../services/api');
                                             const response = await addressService.addAddress({ address_line: newAddress, is_default: true });
                                             const updatedAddress = response.data.data.address_line;
                                             

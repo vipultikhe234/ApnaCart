@@ -1,11 +1,13 @@
-import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
-import { FirebaseMessaging } from '@capacitor-firebase/messaging';
+// import { FirebaseAnalytics } from '@capacitor-firebase/analytics';
+// import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 
 export const initializeFirebase = async () => {
     if (Capacitor.getPlatform() === 'web') return;
 
     try {
+        console.log('Firebase disabled for build testing');
+        /*
         // Request permissions for push notifications
         const result = await FirebaseMessaging.requestPermissions();
         if (result.receive === 'granted') {
@@ -27,7 +29,7 @@ export const initializeFirebase = async () => {
         await FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
             console.log('Notification action performed:', event.notification);
         });
-
+        */
     } catch (error) {
         console.error('Firebase Initialization Error:', error);
     }
@@ -35,5 +37,5 @@ export const initializeFirebase = async () => {
 
 export const logEvent = async (name, params = {}) => {
     if (Capacitor.getPlatform() === 'web') return;
-    await FirebaseAnalytics.logEvent({ name, params });
+    // await FirebaseAnalytics.logEvent({ name, params });
 };

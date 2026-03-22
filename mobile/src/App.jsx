@@ -1,8 +1,8 @@
 import React, { lazy, Suspense, useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { initializeFirebase } from './services/firebase';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { CartProvider, useCart } from './context/CartContext';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useCart } from './context/CartContext';
 import {
     Home as HomeIcon,
     Search as SearchIcon,
@@ -104,6 +104,8 @@ function Navigation() {
 }
 
 function App() {
+    const navigate = useNavigate();
+
     useEffect(() => {
         initializeFirebase();
         
@@ -119,48 +121,46 @@ function App() {
         }
 
         // Natively handle Android hardware back button
-        CapacitorApp.addListener('backButton', () => {
+        const handleBackButton = async () => {
             const path = window.location.pathname;
             const subNavs = ['/search', '/cart', '/orders', '/profile'];
             
             if (path === '/') {
                 CapacitorApp.exitApp();
             } else if (subNavs.includes(path)) {
-                // If on a main tab other than home, navigate home natively
-                window.location.href = '/';
+                navigate('/');
             } else {
-                // Return to whatever standard functionality it had
                 window.history.back();
             }
-        });
+        };
 
-        return () => CapacitorApp.removeAllListeners();
-    }, []);
+        const listener = CapacitorApp.addListener('backButton', handleBackButton);
+
+        return () => {
+            listener.remove();
+        };
+    }, [navigate]);
 
     return (
-        <BrowserRouter>
-            <CartProvider>
-                <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-[#0A0A0A]">
-                    <main className="flex-1">
-                        <Suspense fallback={<PageLoader />}>
-                            <Routes>
-                                <Route path="/login" element={<Login />} />
-                                <Route path="/register" element={<Registration />} />
-                                <Route path="/" element={<Home />} />
-                                <Route path="/search" element={<Search />} />
-                                <Route path="/cart" element={<Cart />} />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/orders" element={<Orders />} />
-                                <Route path="/order/:id" element={<OrderStatus />} />
-                                <Route path="/checkout" element={<Checkout />} />
-                                <Route path="/product/:id" element={<ProductDetail />} />
-                            </Routes>
-                        </Suspense>
-                    </main>
-                    <Navigation />
-                </div>
-            </CartProvider>
-        </BrowserRouter>
+        <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-[#0A0A0A]">
+            <main className="flex-1">
+                <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Registration />} />
+                        <Route path="/" element={<Home />} />
+                        <Route path="/search" element={<Search />} />
+                        <Route path="/cart" element={<Cart />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/orders" element={<Orders />} />
+                        <Route path="/order/:id" element={<OrderStatus />} />
+                        <Route path="/checkout" element={<Checkout />} />
+                        <Route path="/product/:id" element={<ProductDetail />} />
+                    </Routes>
+                </Suspense>
+            </main>
+            <Navigation />
+        </div>
     );
 }
 
