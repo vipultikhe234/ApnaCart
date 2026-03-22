@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://foodhub-backend-2alg.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -114,6 +114,12 @@ export const orderService = {
 // ── Coupon Service ─────────────────────────────────────────────────────────
 export const couponService = {
     validate: (code, amount) => api.post('/coupons/validate', { code, order_amount: amount }),
+};
+
+// ── Address Service ────────────────────────────────────────────────────────
+export const addressService = {
+    getAddresses: () => api.get('/addresses'),
+    addAddress: (data) => api.post('/addresses', data),
 };
 
 export default api;

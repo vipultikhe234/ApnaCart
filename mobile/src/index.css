@@ -13,7 +13,7 @@
     h2,
     h3,
     h4,
-    r,
+    h5,
     h6 {
         @apply font-['Outfit'] tracking-tight;
     }

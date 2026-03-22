@@ -4,7 +4,6 @@ import { authService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User,
-    Mail,
     Phone,
     MapPin,
     Shield,
@@ -12,15 +11,23 @@ import {
     Edit2,
     X,
     CheckCircle2,
+    ChevronLeft,
     ChevronRight,
     Camera,
     Settings,
-    Bell
+    Moon,
+    Sun,
+    Monitor,
+    Bell,
+    Globe,
+    FileText
 } from 'lucide-react';
 
 const Profile = () => {
     const [user, setUser] = useState(null);
     const [editing, setEditing] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -43,6 +50,23 @@ const Profile = () => {
             navigate('/login');
         }
     }, [navigate]);
+
+    useEffect(() => {
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+
+        if (theme === 'system') {
+            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            root.classList.add(systemTheme);
+        } else {
+            root.classList.add(theme);
+        }
+    }, [theme]);
+
+    const handleThemeChange = (newTheme) => {
+        setTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+    };
 
     const handleUpdate = async (e) => {
         e.preventDefault();
@@ -73,184 +97,241 @@ const Profile = () => {
     };
 
     if (!user) return (
-        <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4 bg-[#FDFDFD] dark:bg-[#0B0F1A]">
-            <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-[10px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-[0.4em] animate-pulse">Syncing Profile...</p>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-[#0A0A0A]">
+            <div className="w-8 h-8 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
 
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-[#FDFDFD] dark:bg-[#0B0F1A] min-h-screen pb-32 font-sans"
-        >
-            {/* High-End Profile Hero */}
-            <div className="relative h-[40vh] min-h-[320px] bg-slate-900 overflow-hidden flex flex-col items-center justify-center pt-10">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-[80px] -mr-20 -mt-20"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-[60px] -ml-20 -mb-20"></div>
-
-                <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative z-10"
-                >
-                    <div className="w-32 h-32 bg-white dark:bg-gray-800 rounded-[48px] p-1 shadow-2xl relative">
-                        <div className="w-full h-full bg-slate-50 dark:bg-gray-900 rounded-[44px] flex items-center justify-center overflow-hidden border-2 border-slate-100 dark:border-white/5">
-                            <span className="text-4xl font-[900] text-gray-900 dark:text-white font-['Outfit'] italic">{user.name[0]}</span>
-                        </div>
-                        <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-xl border-4 border-slate-900">
-                            <Camera size={16} strokeWidth={2.5} />
-                        </button>
-                    </div>
-                </motion.div>
-
-                <div className="mt-6 text-center z-10">
-                    <h2 className="text-3xl font-[900] text-white font-['Outfit'] italic tracking-tighter uppercase mb-1">{user.name}</h2>
-                    <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] font-['Outfit']">{user.email}</p>
+    if (showSettings) {
+        return (
+            <div className="bg-zinc-50 dark:bg-[#0A0A0A] min-h-screen pb-32 font-sans">
+                <div className="px-6 pt-12 pb-4 sticky top-0 z-40 bg-zinc-50/90 dark:bg-[#0A0A0A]/90 backdrop-blur-xl flex items-center gap-4 border-b border-zinc-200/50 dark:border-zinc-800/50">
+                    <button
+                        onClick={() => setShowSettings(false)}
+                        className="w-10 h-10 bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm active:scale-95 transition-transform"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">Settings</h1>
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-[#FDFDFD] dark:bg-[#0B0F1A] rounded-t-[48px]"></div>
+                <div className="px-6 mt-6 space-y-8">
+                    {/* Appearance */}
+                    <section>
+                        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-4">Appearance</h2>
+                        <div className="bg-white dark:bg-zinc-900 p-2 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+                            {[
+                                { id: 'light', icon: Sun, label: 'Light' },
+                                { id: 'dark', icon: Moon, label: 'Dark' },
+                                { id: 'system', icon: Monitor, label: 'System' }
+                            ].map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => handleThemeChange(mode.id)}
+                                    className={`flex items-center justify-center gap-2 flex-1 py-3 rounded-2xl transition-all ${
+                                        theme === mode.id 
+                                        ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
+                                        : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                                    }`}
+                                >
+                                    <mode.icon size={16} />
+                                    <span className="text-xs font-semibold">{mode.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Preferences */}
+                    <section>
+                        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-4">Preferences</h2>
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300"><Bell size={18} /></div>
+                                    <span className="text-sm font-medium text-zinc-900 dark:text-white">Push Notifications</span>
+                                </div>
+                                <div className="w-11 h-6 bg-emerald-500 rounded-full relative cursor-pointer">
+                                    <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300"><Globe size={18} /></div>
+                                    <span className="text-sm font-medium text-zinc-900 dark:text-white">Language</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-zinc-400">
+                                    <span className="text-xs font-semibold text-zinc-900 dark:text-white">English</span>
+                                    <ChevronRight size={16} />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* About */}
+                    <section>
+                        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-4">About</h2>
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300"><Shield size={18} /></div>
+                                    <span className="text-sm font-medium text-zinc-900 dark:text-white">Privacy Policy</span>
+                                </div>
+                                <ChevronRight size={16} className="text-zinc-400" />
+                            </div>
+                            <div className="flex items-center justify-between p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300"><FileText size={18} /></div>
+                                    <span className="text-sm font-medium text-zinc-900 dark:text-white">Terms of Service</span>
+                                </div>
+                                <ChevronRight size={16} className="text-zinc-400" />
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-zinc-50 dark:bg-[#0A0A0A] min-h-screen pb-32 font-sans">
+            {/* Soft Header */}
+            <div className="relative pt-16 pb-6 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="relative mb-4">
+                    <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                        <span className="text-3xl font-bold text-zinc-900 dark:text-white">{user.name[0]}</span>
+                    </div>
+                </div>
+
+                <div className="text-center">
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">{user.name}</h2>
+                    <p className="text-xs text-zinc-500">{user.email}</p>
+                </div>
             </div>
 
-            <div className="px-8 space-y-10">
-                {/* Profile Controls */}
-                <div className="flex gap-4">
+            <div className="px-6 mt-8 space-y-8">
+                {/* Controls Area */}
+                <div className="flex gap-3">
                     <button
                         onClick={() => setEditing(!editing)}
-                        className={`flex-1 h-14 rounded-2xl flex items-center justify-center gap-3 transition-all ${editing ? 'bg-rose-500 text-white shadow-xl' : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white shadow-premium'
-                            }`}
+                        className={`flex-1 py-3.5 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+                            editing ? 'bg-red-50 dark:bg-red-500/10 text-red-600' : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                        }`}
                     >
-                        {editing ? <X size={20} /> : <Edit2 size={20} />}
-                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">{editing ? 'Cancel' : 'Edit Profile'}</span>
+                        {editing ? <X size={16} /> : <Edit2 size={16} />}
+                        <span>{editing ? 'Cancel' : 'Edit Profile'}</span>
                     </button>
-                    <div className="w-14 h-14 bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 rounded-2xl flex items-center justify-center text-slate-400 shadow-premium">
-                        <Settings size={20} />
-                    </div>
-                    <div className="w-14 h-14 bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 rounded-2xl flex items-center justify-center text-slate-400 shadow-premium relative">
-                        <Bell size={20} />
-                        <div className="absolute top-4 right-4 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                    </div>
+                    <button 
+                        onClick={() => setShowSettings(true)}
+                        className="w-12 h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 shadow-sm active:scale-95"
+                    >
+                        <Settings size={18} />
+                    </button>
                 </div>
 
                 <AnimatePresence mode="wait">
                     {editing ? (
                         <motion.form
                             key="editing"
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
+                            exit={{ opacity: 0, y: -10 }}
                             onSubmit={handleUpdate}
-                            className="space-y-6"
+                            className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm space-y-6"
                         >
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block italic">Update Information</label>
-
-                            <div className="space-y-5">
-                                <div className="bg-white dark:bg-gray-800/40 p-6 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-premium space-y-6">
-                                    <div className="space-y-2">
-                                        <p className="text-[8px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-widest leading-none pl-1">Full Name</p>
-                                        <input
-                                            type="text"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full bg-transparent border-b-2 border-slate-50 dark:border-white/5 py-2 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-orange-500 transition-colors"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[8px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-widest leading-none pl-1">Phone Number</p>
-                                        <input
-                                            type="text"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full bg-transparent border-b-2 border-slate-50 dark:border-white/5 py-2 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-orange-500 transition-colors"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[8px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-widest leading-none pl-1">Delivery Address</p>
-                                        <textarea
-                                            value={formData.address}
-                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                            className="w-full bg-transparent border-b-2 border-slate-50 dark:border-white/5 py-2 text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-orange-500 transition-colors resize-none h-20"
-                                        />
-                                    </div>
+                            <h3 className="text-sm font-semibold text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3">Edit Details</h3>
+                            
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-zinc-500">Full Name</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl py-3 px-4 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-900/10 placeholder:text-zinc-400"
+                                        required
+                                    />
                                 </div>
-
-                                <motion.button
-                                    whileTap={{ scale: 0.98 }}
-                                    type="submit"
-                                    disabled={loading}
-                                    className={`w-full h-16 rounded-[24px] shadow-2xl flex items-center justify-center gap-3 transition-all ${loading ? 'bg-slate-200' : 'bg-slate-900 dark:bg-orange-500 shadow-slate-900/10 dark:shadow-orange-500/20'
-                                        }`}
-                                >
-                                    {loading ? (
-                                        <div className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 size={18} />
-                                            <span className="text-white text-[11px] font-black uppercase tracking-[0.3em]">Save Changes</span>
-                                        </>
-                                    )}
-                                </motion.button>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-zinc-500">Phone</label>
+                                    <input
+                                        type="text"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl py-3 px-4 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-900/10 placeholder:text-zinc-400"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-zinc-500">Address</label>
+                                    <textarea
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl py-3 px-4 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-900/10 resize-none h-20 placeholder:text-zinc-400"
+                                    />
+                                </div>
                             </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold text-sm flex items-center justify-center shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                            >
+                                {loading ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <span>Save Changes</span>
+                                )}
+                            </button>
                         </motion.form>
                     ) : (
                         <motion.div
                             key="viewing"
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            className="space-y-10"
+                            exit={{ opacity: 0, y: -10 }}
+                            className="space-y-6"
                         >
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block italic">Account Directory</label>
-                                <div className="space-y-3">
-                                    {[
-                                        { label: 'Mobile Number', value: user.phone || 'Not provided', icon: Phone, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
-                                        { label: 'Current Address', value: user.address || 'No address saved', icon: MapPin, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-500/10' },
-                                        { label: 'Verified Status', value: 'Prime Delivery Node', icon: Shield, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' }
-                                    ].map((item, i) => (
-                                        <div key={i} className="bg-white dark:bg-gray-800/40 p-5 rounded-[28px] border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5">
-                                            <div className={`w-12 h-12 ${item.bg} ${item.color} rounded-2xl flex items-center justify-center shrink-0`}>
-                                                <item.icon size={22} strokeWidth={2.5} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">{item.label}</p>
-                                                <p className="font-bold text-gray-900 dark:text-white text-sm truncate italic">{item.value}</p>
-                                            </div>
-                                            <ChevronRight size={16} className="text-slate-200" />
-                                        </div>
-                                    ))}
+                            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+                                <div className="p-4 flex items-center gap-4 border-b border-zinc-100 dark:border-zinc-800">
+                                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400">
+                                        <Phone size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] text-zinc-400 font-medium tracking-wider uppercase">Phone</p>
+                                        <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{user.phone || 'Not linked'}</p>
+                                    </div>
+                                </div>
+                                <div className="p-4 flex items-center gap-4 border-b border-zinc-100 dark:border-zinc-800">
+                                    <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400">
+                                        <MapPin size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] text-zinc-400 font-medium tracking-wider uppercase">Address</p>
+                                        <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{user.address || 'No address added'}</p>
+                                    </div>
+                                </div>
+                                <div className="p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500">
+                                        <Shield size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] text-zinc-400 font-medium tracking-wider uppercase">Account Tier</p>
+                                        <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">Verified User</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="pt-2">
-                                <motion.button
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center justify-between p-6 bg-rose-50 dark:bg-rose-500/10 rounded-[32px] text-rose-500 border border-rose-100 dark:border-rose-500/20 group hover:bg-rose-500 hover:text-white transition-all"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-white/20">
-                                            <LogOut size={24} strokeWidth={2.5} />
-                                        </div>
-                                        <div className="text-left">
-                                            <span className="font-black uppercase tracking-widest text-[11px] block italic leading-none mb-1">Logout</span>
-                                            <span className="text-[8px] font-bold opacity-60 uppercase tracking-widest leading-none">Discard Active Session</span>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={20} className="opacity-30 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
-                                </motion.button>
-                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="w-full flex items-center justify-center gap-2 py-4 bg-white dark:bg-zinc-900 rounded-2xl text-red-500 font-semibold border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all"
+                            >
+                                <LogOut size={18} />
+                                <span className="text-sm">Log out</span>
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
             </div>
-
-            <p className="text-center text-[9px] font-black text-slate-200 dark:text-gray-800 uppercase tracking-[0.5em] mt-20 mb-10 italic">
-                FoodHub Ecosystem v1.0.4
-            </p>
-        </motion.div>
+        </div>
     );
 };
 

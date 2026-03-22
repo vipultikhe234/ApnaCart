@@ -13,7 +13,6 @@ import {
     AlertCircle,
     ArrowRight,
     ArrowLeft,
-    ChefHat,
     Loader2
 } from 'lucide-react';
 
@@ -36,6 +35,7 @@ const Registration = () => {
         if (!formData.name.trim()) return 'Please enter your name.';
         if (!formData.email.trim()) return 'Please enter your email.';
         if (!formData.phone.trim()) return 'Please enter your phone number.';
+        if (!formData.address.trim()) return 'Please enter your delivery address.';
         return null;
     };
 
@@ -74,64 +74,51 @@ const Registration = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0B0F1A] flex flex-col font-sans overflow-x-hidden">
-            {/* Premium Registration Hero */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="relative h-[30vh] min-h-[260px] bg-slate-900 overflow-hidden flex flex-col items-center justify-center p-8 text-center"
-            >
+        <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] flex flex-col font-sans">
+            {/* Elegant Header Area */}
+            <div className="pt-20 pb-4 px-8 flex flex-col items-center justify-center text-center relative">
                 <motion.div
-                    animate={{
-                        scale: [1, 1.2, 1],
-                        rotate: [0, -90, 0],
-                        opacity: [0.2, 0.3, 0.2]
-                    }}
-                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                    className="absolute top-[-10%] left-[-10%] w-80 h-80 bg-orange-500/20 rounded-full blur-[100px]"
-                />
-
-                <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative z-10"
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                    <div className="w-16 h-16 bg-orange-500 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-orange-500/30 border-2 border-white/20 -rotate-6">
-                        <ChefHat className="text-white" size={32} strokeWidth={2.5} />
+                    <div className="w-16 h-16 bg-zinc-900 dark:bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                        <span className="text-white dark:text-zinc-900 text-2xl font-bold font-['Outfit'] tracking-tight">FH</span>
                     </div>
-                    <h1 className="text-4xl font-[900] text-white font-['Outfit'] italic tracking-tighter leading-none mb-2">
-                        JOIN THE <span className="text-orange-500">HUB</span>
+                    <h1 className="text-3xl font-bold text-zinc-900 dark:text-white font-['Outfit'] tracking-tight mb-2">
+                        Create Account
                     </h1>
-                    <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em]">Create Your Account</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        Join FoodHub to continue.
+                    </p>
                 </motion.div>
+            </div>
 
-                <div className="absolute bottom-0 left-0 right-0 h-10 bg-[#FDFDFD] dark:bg-[#0B0F1A] rounded-t-[48px]"></div>
-            </motion.div>
-
-            {/* Step Indicator */}
-            <div className="px-10 pt-4 flex gap-3 max-w-md mx-auto w-full mb-10">
-                <div className="flex-1 space-y-2">
-                    <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 1 ? 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'bg-slate-100 dark:bg-white/5'}`}></div>
-                    <p className={`text-[8px] font-black uppercase tracking-widest text-center ${step >= 1 ? 'text-orange-500' : 'text-slate-300'}`}>Basic Info</p>
+            {/* Clean Stepper */}
+            <div className="px-8 flex items-center justify-between w-full max-w-md mx-auto mb-8 mt-2">
+                <div className="flex-1 flex flex-col gap-1.5">
+                    <div className={`h-1 rounded-full transition-colors duration-500 ${step >= 1 ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-200 dark:bg-zinc-800'}`}></div>
+                    <span className={`text-[10px] font-semibold transition-colors duration-500 ${step >= 1 ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Step 1: Details</span>
                 </div>
-                <div className="flex-1 space-y-2">
-                    <div className={`h-1.5 rounded-full transition-all duration-700 ${step >= 2 ? 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]' : 'bg-slate-100 dark:bg-white/5'}`}></div>
-                    <p className={`text-[8px] font-black uppercase tracking-widest text-center ${step >= 2 ? 'text-orange-500' : 'text-slate-300'}`}>Security</p>
+                <div className="w-4"></div>
+                <div className="flex-1 flex flex-col gap-1.5 align-end text-right">
+                    <div className={`h-1 rounded-full transition-colors duration-500 ${step >= 2 ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-200 dark:bg-zinc-800'}`}></div>
+                    <span className={`text-[10px] font-semibold transition-colors duration-500 ${step >= 2 ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>Step 2: Password</span>
                 </div>
             </div>
 
-            {/* Form Container */}
+            {/* Form Area */}
             <div className="flex-1 px-8 pb-12 w-full max-w-md mx-auto relative z-10">
                 <AnimatePresence mode="popLayout">
                     {error && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 p-4 rounded-2xl mb-8 flex items-center gap-3"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 p-4 rounded-xl mb-6 flex items-center gap-3"
                         >
-                            <AlertCircle className="text-rose-500 shrink-0" size={18} />
-                            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 leading-tight">{error}</p>
+                            <AlertCircle className="text-red-500 shrink-0" size={18} />
+                            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -145,38 +132,32 @@ const Registration = () => {
                             exit={{ x: 20, opacity: 0 }}
                             className="space-y-5"
                         >
-                            <div className="mb-0">
-                                <h2 className="text-2xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tight mb-1">Your Identity</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Step 01 of 02</p>
-                            </div>
+                            <FormInput label="Full Name" icon={User} placeholder="John Doe" value={formData.name} onChange={v => update('name', v)} />
+                            <FormInput label="Email Address" icon={Mail} placeholder="your@email.com" type="email" value={formData.email} onChange={v => update('email', v)} />
+                            <FormInput label="Phone Number" icon={Phone} placeholder="+1 234 567 890" type="tel" value={formData.phone} onChange={v => update('phone', v)} />
 
-                            <div className="space-y-5">
-                                <FormInput label="Full Name" icon={User} placeholder="John Doe" value={formData.name} onChange={v => update('name', v)} />
-                                <FormInput label="Email Address" icon={Mail} placeholder="name@email.com" type="email" value={formData.email} onChange={v => update('email', v)} />
-                                <FormInput label="Phone Number" icon={Phone} placeholder="+1 234 567 890" type="tel" value={formData.phone} onChange={v => update('phone', v)} />
-
-                                <div className="space-y-2.5">
-                                    <label className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Delivery Address</label>
-                                    <div className="bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-white/5 rounded-[24px] p-4 flex gap-4 focus-within:border-orange-500/30 transition-all shadow-sm">
-                                        <MapPin className="text-slate-300 dark:text-gray-600 shrink-0 mt-1" size={20} />
-                                        <textarea
-                                            value={formData.address}
-                                            onChange={e => update('address', e.target.value)}
-                                            placeholder="Enter your address..."
-                                            className="w-full bg-transparent outline-none text-sm font-bold text-gray-900 dark:text-white resize-none h-20 placeholder:text-slate-300 dark:placeholder:text-gray-600"
-                                        />
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Delivery Address</label>
+                                <div className="relative group">
+                                    <div className="absolute left-4 top-4 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors">
+                                        <MapPin size={18} />
                                     </div>
+                                    <textarea
+                                        value={formData.address}
+                                        onChange={e => update('address', e.target.value)}
+                                        placeholder="Enter your full address..."
+                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 focus:border-zinc-900 dark:focus:border-white transition-all placeholder:text-zinc-400 resize-none h-24"
+                                    />
                                 </div>
                             </div>
 
-                            <motion.button
-                                whileTap={{ scale: 0.98 }}
+                            <button
                                 onClick={goNext}
-                                className="w-full py-5 mt-8 bg-slate-900 dark:bg-orange-500 text-white rounded-[24px] shadow-2xl flex items-center justify-center gap-3 group"
+                                className="w-full py-4 rounded-2xl mt-4 flex items-center justify-center gap-2 transition-all shadow-sm bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 active:scale-[0.98]"
                             >
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em]">Continue</span>
-                                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                            </motion.button>
+                                <span className="text-sm font-semibold">Continue</span>
+                                <ArrowRight size={18} />
+                            </button>
                         </motion.div>
                     ) : (
                         <motion.form
@@ -185,101 +166,100 @@ const Registration = () => {
                             animate={{ x: 0, opacity: 1 }}
                             exit={{ x: -20, opacity: 0 }}
                             onSubmit={handleRegister}
-                            className="space-y-6"
+                            className="space-y-5"
                         >
-                            <div className="mb-0">
-                                <h2 className="text-2xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tight mb-1">Set Password</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Step 02 of 02</p>
-                            </div>
+                            <FormInput
+                                label="Create Password"
+                                icon={Lock}
+                                placeholder="••••••••"
+                                type={showPass ? "text" : "password"}
+                                value={formData.password}
+                                onChange={v => update('password', v)}
+                                suffix={
+                                    <button type="button" onClick={() => setShowPass(!showPass)}>
+                                        {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                }
+                            />
+                            <FormInput
+                                label="Confirm Password"
+                                icon={Lock}
+                                placeholder="••••••••"
+                                type={showConfirmPass ? "text" : "password"}
+                                value={formData.password_confirmation}
+                                onChange={v => update('password_confirmation', v)}
+                                suffix={
+                                    <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)}>
+                                        {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                }
+                            />
 
-                            <div className="space-y-6">
-                                <FormInput
-                                    label="Password"
-                                    icon={Lock}
-                                    placeholder="••••••••"
-                                    type={showPass ? "text" : "password"}
-                                    value={formData.password}
-                                    onChange={v => update('password', v)}
-                                    suffix={
-                                        <button type="button" onClick={() => setShowPass(!showPass)}>
-                                            {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                                        </button>
-                                    }
-                                />
-                                <FormInput
-                                    label="Confirm Password"
-                                    icon={Lock}
-                                    placeholder="••••••••"
-                                    type={showConfirmPass ? "text" : "password"}
-                                    value={formData.password_confirmation}
-                                    onChange={v => update('password_confirmation', v)}
-                                    suffix={
-                                        <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)}>
-                                            {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                                        </button>
-                                    }
-                                />
-                            </div>
-
-                            <div className="flex gap-4 mt-10">
-                                <motion.button
-                                    whileTap={{ scale: 0.9 }}
+                            <div className="flex gap-3 mt-8">
+                                <button
                                     type="button"
                                     onClick={() => setStep(1)}
-                                    className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-[24px] flex items-center justify-center text-slate-400 hover:text-orange-500 border border-slate-100 dark:border-white/5 transition-all"
+                                    className="w-14 h-14 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-95"
                                 >
-                                    <ArrowLeft size={24} />
-                                </motion.button>
-                                <motion.button
-                                    whileTap={{ scale: 0.98 }}
+                                    <ArrowLeft size={20} />
+                                </button>
+                                <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`flex-1 flex items-center justify-center gap-3 rounded-[24px] shadow-2xl transition-all ${loading ? 'bg-slate-200' : 'bg-slate-900 dark:bg-orange-500 shadow-slate-900/20 dark:shadow-orange-500/20'
-                                        }`}
+                                    className={`flex-1 flex items-center justify-center gap-2 rounded-2xl transition-all shadow-sm ${
+                                        loading 
+                                        ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' 
+                                        : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 active:scale-[0.98]'
+                                    }`}
                                 >
                                     {loading ? (
-                                        <Loader2 className="animate-spin text-slate-400" size={24} />
+                                        <Loader2 className="animate-spin" size={20} />
                                     ) : (
-                                        <span className="text-white text-[11px] font-black uppercase tracking-[0.3em]">Register Now</span>
+                                        <span className="text-sm font-semibold">Create Account</span>
                                     )}
-                                </motion.button>
+                                </button>
                             </div>
                         </motion.form>
                     )}
                 </AnimatePresence>
 
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1 }}
-                    className="mt-12 text-center"
-                >
-                    <Link to="/login" className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest hover:text-orange-500 flex items-center justify-center gap-2">
-                        Already Have an Account? <span className="text-orange-500 underline underline-offset-4">Login</span>
-                    </Link>
-                </motion.div>
+                <div className="mt-10 text-center">
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        Already have an account?{' '}
+                        <Link to="/login" className="font-semibold text-zinc-900 dark:text-white hover:underline">
+                            Sign in
+                        </Link>
+                    </p>
+                </div>
+            </div>
+            
+            <div className="mt-auto pb-8 text-center">
+                 <p className="text-[10px] text-zinc-400 dark:text-zinc-600">
+                    Your data is secure and encrypted. <br />
+                    Powered by FoodHub © 2026
+                 </p>
             </div>
         </div>
     );
 };
 
 const FormInput = ({ label, icon: Icon, placeholder, type = "text", value, onChange, suffix }) => (
-    <div className="space-y-2.5">
-        <label className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">{label}</label>
+    <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 ml-1">{label}</label>
         <div className="relative group">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-gray-600 transition-colors group-focus-within:text-orange-500">
-                <Icon size={20} />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors">
+                <Icon size={18} />
             </div>
             <input
                 type={type}
                 value={value}
                 onChange={e => onChange(e.target.value)}
                 placeholder={placeholder}
-                className="w-full bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-white/5 rounded-[24px] py-5 pl-14 pr-14 text-sm font-bold text-gray-900 dark:text-white outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500/30 transition-all placeholder:text-slate-300 dark:placeholder:text-gray-600 shadow-sm"
+                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl py-4 pl-12 pr-12 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 focus:border-zinc-900 dark:focus:border-white transition-all placeholder:text-zinc-400"
                 required
             />
             {suffix && (
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                     {suffix}
                 </div>
             )}

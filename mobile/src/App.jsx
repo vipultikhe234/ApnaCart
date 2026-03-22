@@ -1,4 +1,6 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { initializeFirebase } from './services/firebase';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { CartProvider, useCart } from './context/CartContext';
 import {
@@ -9,7 +11,7 @@ import {
     User,
     Loader2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // ── Lazy-load pages ──────────────────────────────
 const Home = lazy(() => import('./pages/Home'));
@@ -25,14 +27,13 @@ const OrderStatus = lazy(() => import('./pages/OrderStatus'));
 
 // ── Minimal spinner ────────────────────────
 const PageLoader = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-white dark:bg-[#0B0F1A]">
+    <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-zinc-50 dark:bg-[#0A0A0A]">
         <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
         >
-            <Loader2 className="w-10 h-10 text-orange-500" />
+            <Loader2 className="w-8 h-8 text-zinc-900 dark:text-white" />
         </motion.div>
-        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] animate-pulse">Syncing Hub...</p>
     </div>
 );
 
@@ -48,50 +49,50 @@ function Navigation() {
     if (isHidden) return null;
 
     const navLinks = [
-        { to: '/', icon: HomeIcon, label: 'Discover' },
+        { to: '/', icon: HomeIcon, label: 'Home' },
         { to: '/search', icon: SearchIcon, label: 'Search' },
         { to: '/cart', icon: ShoppingBag, label: 'Cart', badge: cartCount },
-        { to: '/orders', icon: Clock, label: 'Activity' },
+        { to: '/orders', icon: Clock, label: 'Orders' },
         { to: '/profile', icon: User, label: 'Profile' },
     ];
 
     return (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-50">
-            <nav className="bg-white/80 dark:bg-black/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 flex justify-around items-center p-2 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
+            <nav className="bg-white/90 dark:bg-[#111111]/90 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-800/50 flex justify-around items-center p-2.5 rounded-3xl shadow-lg">
                 {navLinks.map(({ to, icon: Icon, label, badge }) => {
                     const isActive = location.pathname === to;
                     return (
                         <Link
                             key={to}
                             to={to}
-                            className="flex flex-col items-center gap-1.5 py-2 px-1 flex-1 relative"
+                            className="flex flex-col items-center gap-1 py-1 px-1 flex-1 relative transition-transform active:scale-95"
                         >
                             <motion.div
-                                animate={isActive ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
+                                animate={isActive ? { y: -2 } : { y: 0 }}
                                 className={`relative flex items-center justify-center w-12 h-10 rounded-2xl transition-all duration-300 ${isActive
-                                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40'
-                                        : 'text-slate-400 dark:text-gray-500 hover:bg-slate-50 dark:hover:bg-white/5'
+                                        ? 'text-zinc-900 dark:text-white'
+                                        : 'text-zinc-400 dark:text-zinc-600 hover:text-zinc-600'
                                     }`}
                             >
-                                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                                 {badge > 0 && (
                                     <motion.span
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
-                                        className="absolute -top-1 -right-1 w-5 h-5 bg-black dark:bg-white text-white dark:text-black text-[9px] font-[900] rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-gray-900"
+                                        className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm border-2 border-white dark:border-[#111111] px-1"
                                     >
                                         {badge > 9 ? '9+' : badge}
                                     </motion.span>
                                 )}
                             </motion.div>
-                            <span className={`text-[8px] font-black uppercase tracking-wider transition-colors ${isActive ? 'text-gray-900 dark:text-white' : 'text-slate-400 dark:text-gray-500'
+                            <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-600'
                                 }`}>
                                 {label}
                             </span>
                             {isActive && (
                                 <motion.div
                                     layoutId="mobileNavDot"
-                                    className="absolute -top-1.5 w-1 h-1 bg-orange-500 rounded-full"
+                                    className="absolute -top-1 w-1 h-1 bg-zinc-900 dark:bg-white rounded-full"
                                 />
                             )}
                         </Link>
@@ -103,10 +104,43 @@ function Navigation() {
 }
 
 function App() {
+    useEffect(() => {
+        initializeFirebase();
+        
+        // Initialize Theme
+        const theme = localStorage.getItem('theme') || 'system';
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        if (theme === 'system') {
+            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            root.classList.add(systemTheme);
+        } else {
+            root.classList.add(theme);
+        }
+
+        // Natively handle Android hardware back button
+        CapacitorApp.addListener('backButton', () => {
+            const path = window.location.pathname;
+            const subNavs = ['/search', '/cart', '/orders', '/profile'];
+            
+            if (path === '/') {
+                CapacitorApp.exitApp();
+            } else if (subNavs.includes(path)) {
+                // If on a main tab other than home, navigate home natively
+                window.location.href = '/';
+            } else {
+                // Return to whatever standard functionality it had
+                window.history.back();
+            }
+        });
+
+        return () => CapacitorApp.removeAllListeners();
+    }, []);
+
     return (
         <BrowserRouter>
             <CartProvider>
-                <div className="flex flex-col min-h-screen bg-[#FDFDFD] dark:bg-[#0B0F1A]">
+                <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-[#0A0A0A]">
                     <main className="flex-1">
                         <Suspense fallback={<PageLoader />}>
                             <Routes>

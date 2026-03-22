@@ -1,0 +1,8 @@
+{
+  "appId": "com.foodHub.app",
+  "appName": "FoodHub",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

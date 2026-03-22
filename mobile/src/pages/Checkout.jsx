@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { couponService, orderService } from '../services/api';
+import { couponService, orderService, addressService } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePayment from '../components/StripePayment';
@@ -16,8 +16,7 @@ import {
     ArrowRight,
     Ticket,
     ReceiptText,
-    Wallet,
-    Info
+    Wallet
 } from 'lucide-react';
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -38,6 +37,10 @@ const Checkout = () => {
     const [couponApplied, setCouponApplied] = useState(null);
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
+    const [addresses, setAddresses] = useState([]);
+    const [newAddress, setNewAddress] = useState('');
+    const [isAddingAddress, setIsAddingAddress] = useState(false);
+
     const deliveryFee = 30.00;
     const taxes = (Number(subtotal) || 0) * 0.05;
     const finalSubtotal = (Number(subtotal) || 0) - couponDiscount;
@@ -50,16 +53,43 @@ const Checkout = () => {
             return;
         }
 
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
+        const fetchAddresses = async () => {
             try {
-                const user = JSON.parse(storedUser);
-                if (user.address) setAddress(user.address);
-            } catch (e) {
-                console.error("User data corruption:", e);
+                const response = await addressService.getAddresses();
+                if (response.data.data && response.data.data.length > 0) {
+                    setAddresses(response.data.data);
+                    const defaultAddress = response.data.data.find(a => a.is_default);
+                    setAddress(defaultAddress ? defaultAddress.address_line : response.data.data[0].address_line);
+                } else {
+                    const storedUser = localStorage.getItem('user');
+                    if (storedUser) {
+                        try {
+                            const user = JSON.parse(storedUser);
+                            if (user.address) setAddress(user.address);
+                        } catch (e) {
+                            console.error("User data corruption:", e);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch user addresses:", err);
             }
-        }
+        };
+        fetchAddresses();
     }, [navigate]);
+
+    const handleSaveNewAddress = async () => {
+        if (!newAddress.trim()) return;
+        try {
+            const res = await addressService.addAddress({ address_line: newAddress, is_default: true });
+            setAddresses([res.data.data, ...addresses]);
+            setAddress(res.data.data.address_line);
+            setNewAddress('');
+            setIsAddingAddress(false);
+        } catch (e) {
+            alert('Failed to save address');
+        }
+    };
 
     const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
@@ -68,19 +98,19 @@ const Checkout = () => {
         try {
             const response = await couponService.validate(couponCode, subtotal);
             setCouponDiscount(response.data.discount);
-            setCouponApplied({ type: 'success', message: `Coupon applied: ₹${response.data.discount} discount.` });
+            setCouponApplied({ type: 'success', message: `Saved ₹${response.data.discount}` });
         } catch (error) {
             setCouponDiscount(0);
-            setCouponApplied({ type: 'error', message: error.response?.data?.message || 'Invalid coupon code' });
+            setCouponApplied({ type: 'error', message: error.response?.data?.message || 'Invalid code' });
         } finally {
             setIsApplyingCoupon(false);
         }
     };
 
     const handlePlaceOrder = async () => {
-        if (!address.trim()) return alert('Please enter your delivery address.');
+        if (!address.trim()) return alert('Please enter delivery address.');
         if (paymentMethod === 'stripe' && !stripeKey) {
-            return alert('Payment gateway error. Please try again or use Cash.');
+            return alert('Payment gateway error. Please try Cash.');
         }
         setLoading(true);
         try {
@@ -120,250 +150,230 @@ const Checkout = () => {
         navigate(placedOrderId ? `/order/${placedOrderId}` : '/orders');
     };
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
-        }
-    };
-
     return (
-        <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            className="pb-40 bg-[#FDFDFD] dark:bg-[#0B0F1A] min-h-screen"
-        >
-            {/* Premium Sticky Header */}
-            <div className="px-6 pt-8 pb-4 sticky top-0 z-40 bg-[#FDFDFD]/90 dark:bg-[#0B0F1A]/90 backdrop-blur-2xl flex items-center justify-between border-b border-gray-100 dark:border-white/5">
-                <motion.button
-                    whileTap={{ scale: 0.9 }}
+        <div className="pb-32 bg-zinc-50 dark:bg-[#0A0A0A] min-h-screen">
+            {/* Header */}
+            <div className="px-6 pt-12 pb-4 sticky top-0 z-40 bg-zinc-50/90 dark:bg-[#0A0A0A]/90 backdrop-blur-xl flex items-center justify-between border-b border-zinc-200/50 dark:border-zinc-800/50">
+                <button
                     onClick={() => navigate(-1)}
-                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl shadow-premium border border-gray-100 dark:border-white/5 flex items-center justify-center text-slate-900 dark:text-white"
+                    className="w-10 h-10 bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm active:scale-95"
                 >
-                    <ChevronLeft size={24} />
-                </motion.button>
+                    <ChevronLeft size={20} />
+                </button>
                 <div className="text-center">
-                    <h2 className="text-lg font-[900] text-gray-900 dark:text-white font-['Outfit'] italic uppercase tracking-tight">Checkout</h2>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center justify-center gap-1.5 leading-none">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Checkout</h2>
+                    <p className="text-[10px] font-medium text-emerald-500 uppercase tracking-widest flex items-center justify-center gap-1">
                         <ShieldCheck size={10} /> Secure Checkout
                     </p>
                 </div>
-                <div className="w-12 h-12"></div>
+                <div className="w-10 h-10"></div>
             </div>
 
-            <div className="px-8 mt-10 space-y-12">
-                {/* Delivery Information */}
-                <motion.section variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 bg-orange-50 dark:bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500">
-                            <MapPin size={16} />
-                        </div>
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Delivery Address</h3>
+            <div className="px-6 mt-6 space-y-8">
+                {/* Address */}
+                <section>
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Delivery Address</h3>
+                        <button 
+                            onClick={() => setIsAddingAddress(!isAddingAddress)}
+                            className="text-xs font-semibold text-emerald-500"
+                        >
+                            {isAddingAddress ? 'Cancel' : '+ Add New'}
+                        </button>
                     </div>
-                    <div className="bg-white dark:bg-gray-800/40 p-6 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-premium group">
-                        <textarea
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Enter your street address..."
-                            className="w-full bg-transparent outline-none h-28 text-sm font-bold text-gray-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-gray-600 resize-none"
-                        />
-                    </div>
-                </motion.section>
 
-                {/* Payment Method */}
-                <motion.section variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500">
-                            <Wallet size={16} />
+                    {isAddingAddress ? (
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+                            <textarea
+                                value={newAddress}
+                                onChange={(e) => setNewAddress(e.target.value)}
+                                placeholder="Enter your full new address..."
+                                className="w-full bg-transparent outline-none h-20 text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 resize-none"
+                            />
+                            <button
+                                onClick={handleSaveNewAddress}
+                                disabled={!newAddress.trim()}
+                                className="w-full py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-semibold"
+                            >
+                                Save Address
+                            </button>
                         </div>
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Payment Method</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    ) : (
+                        <div className="space-y-3">
+                            {addresses.length > 0 ? (
+                                addresses.map((addr) => (
+                                    <div 
+                                        key={addr.id}
+                                        onClick={() => setAddress(addr.address_line)}
+                                        className={`p-4 rounded-3xl border cursor-pointer flex gap-3 transition-all ${
+                                            address === addr.address_line 
+                                            ? 'border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800' 
+                                            : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
+                                        }`}
+                                    >
+                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${address === addr.address_line ? 'border-zinc-900 dark:border-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                            {address === addr.address_line && <div className="w-2.5 h-2.5 bg-zinc-900 dark:bg-white rounded-full"></div>}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-zinc-900 dark:text-white">{addr.address_line}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                                    <textarea
+                                        value={address}
+                                        onChange={(e) => setAddress(e.target.value)}
+                                        placeholder="Enter your street address..."
+                                        className="w-full bg-transparent outline-none h-20 text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 resize-none"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </section>
+
+                {/* Payment */}
+                <section>
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Payment Method</h3>
+                    <div className="grid grid-cols-2 gap-3">
                         {[
-                            { id: 'cod', label: 'Cash on Delivery', icon: Banknote },
-                            { id: 'stripe', label: 'Credit Card', icon: CreditCard }
+                            { id: 'cod', label: 'Cash', icon: Banknote },
+                            { id: 'stripe', label: 'Card', icon: CreditCard }
                         ].map(method => {
                             const Icon = method.icon;
                             const isActive = paymentMethod === method.id;
                             return (
-                                <motion.button
+                                <button
                                     key={method.id}
-                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => setPaymentMethod(method.id)}
-                                    className={`relative p-6 rounded-[36px] border-2 flex flex-col items-center gap-4 transition-all overflow-hidden ${isActive
-                                            ? 'border-orange-500 bg-orange-50/20 shadow-xl shadow-orange-500/10'
-                                            : 'border-slate-50 dark:border-white/5 bg-white dark:bg-gray-800/40'
-                                        }`}
+                                    className={`relative p-4 rounded-[20px] border flex flex-col items-center gap-2 transition-all active:scale-[0.98] ${
+                                        isActive
+                                            ? 'border-zinc-900 bg-white dark:border-white dark:bg-zinc-800'
+                                            : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                                    }`}
                                 >
-                                    <div className={`w-14 h-14 rounded-[24px] flex items-center justify-center transition-all ${isActive ? 'bg-orange-500 text-white shadow-lg' : 'bg-slate-50 dark:bg-white/5 text-slate-400'
-                                        }`}>
-                                        <Icon size={28} strokeWidth={isActive ? 2.5 : 2} />
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>
+                                        <Icon size={20} />
                                     </div>
-                                    <span className={`text-[10px] font-black tracking-widest uppercase ${isActive ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400'}`}>
+                                    <span className={`text-[11px] font-semibold ${isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>
                                         {method.label}
                                     </span>
-                                    {isActive && <motion.div layoutId="activePay" className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full" />}
-                                </motion.button>
+                                    {isActive && <div className="absolute top-3 right-3 w-1.5 h-1.5 bg-zinc-900 dark:bg-white rounded-full" />}
+                                </button>
                             );
                         })}
                     </div>
-                </motion.section>
+                </section>
 
-                {/* Coupon Code */}
-                <motion.section variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
-                            <Ticket size={16} />
-                        </div>
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-[0.2em]">Add Coupon</h3>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800/40 p-3 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-premium flex gap-3">
+                {/* Coupon */}
+                <section>
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Promo Code</h3>
+                    <div className="bg-white dark:bg-zinc-900 p-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex gap-2">
                         <input
                             type="text"
                             value={couponCode}
                             onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                             placeholder="Enter Code..."
-                            className="flex-1 bg-slate-50 dark:bg-white/5 rounded-[24px] px-6 text-[11px] font-[900] uppercase tracking-[0.2em] outline-none text-gray-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-gray-600 focus:ring-1 focus:ring-orange-500/20"
+                            className="flex-1 bg-transparent px-4 text-sm font-semibold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 uppercase tracking-widest"
                         />
-                        <motion.button
-                            whileTap={{ scale: 0.95 }}
+                        <button
                             onClick={handleApplyCoupon}
                             disabled={isApplyingCoupon || !couponCode.trim()}
-                            className={`px-8 h-[60px] rounded-[24px] text-[10px] font-black uppercase tracking-widest transition-all ${couponDiscount > 0
-                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                    : 'bg-slate-900 dark:bg-orange-500 text-white shadow-xl'
-                                }`}
+                            className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3 rounded-xl text-xs font-semibold active:scale-95 transition-transform"
                         >
                             {isApplyingCoupon ? '...' : (couponDiscount > 0 ? 'Applied' : 'Apply')}
-                        </motion.button>
+                        </button>
                     </div>
                     {couponApplied && (
-                        <motion.p
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className={`mt-4 text-[10px] font-black uppercase tracking-widest ml-4 ${couponApplied.type === 'success' ? 'text-emerald-500' : 'text-rose-500'
-                                }`}
-                        >
+                        <p className={`mt-2 text-xs font-medium ml-2 ${couponApplied.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
                             {couponApplied.message}
-                        </motion.p>
+                        </p>
                     )}
-                </motion.section>
+                </section>
 
-                {/* Bill Details */}
-                <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="pt-4">
-                    <div className="bg-slate-900 dark:bg-gray-900 rounded-[48px] p-8 text-white relative overflow-hidden shadow-2xl">
-                        <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full blur-[60px] -translate-y-12 translate-x-12"></div>
-
-                        <div className="relative z-10 space-y-6">
-                            <div className="flex justify-between items-center opacity-50">
-                                <div className="flex items-center gap-3">
-                                    <ReceiptText size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">Subtotal</span>
-                                </div>
-                                <span className="text-sm font-[900] font-['Outfit'] italic">₹{(Number(subtotal) || 0).toFixed(0)}</span>
-                            </div>
-
-                            {couponDiscount > 0 && (
-                                <div className="flex justify-between items-center text-emerald-400">
-                                    <div className="flex items-center gap-3">
-                                        <Ticket size={16} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Coupon Savings</span>
-                                    </div>
-                                    <span className="text-sm font-[900] font-['Outfit'] italic">-₹{couponDiscount.toFixed(0)}</span>
-                                </div>
-                            )}
-
-                            <div className="flex justify-between items-center opacity-50">
-                                <div className="flex items-center gap-3">
-                                    <Wallet size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">Taxes & Fees</span>
-                                </div>
-                                <span className="text-sm font-[900] font-['Outfit'] italic">₹{taxes.toFixed(0)}</span>
-                            </div>
-
-                            <div className="h-px bg-white/10 my-6"></div>
-
-                            <div className="flex justify-between items-end">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] font-black text-orange-500 uppercase tracking-[0.3em] italic">Grand Total</span>
-                                </div>
-                                <span className="text-5xl font-[900] font-['Outfit'] tracking-tighter italic leading-none">₹{total.toFixed(0)}</span>
-                            </div>
-                        </div>
+                {/* Summary */}
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-zinc-500 flex items-center gap-2"><ReceiptText size={16} /> Subtotal</span>
+                        <span className="font-semibold text-zinc-900 dark:text-white">₹{(Number(subtotal) || 0).toFixed(0)}</span>
                     </div>
-                </motion.div>
+
+                    {couponDiscount > 0 && (
+                        <div className="flex justify-between items-center text-emerald-500 text-sm">
+                            <span className="flex items-center gap-2"><Ticket size={16} /> Discount</span>
+                            <span className="font-semibold">-₹{couponDiscount.toFixed(0)}</span>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-zinc-500 flex items-center gap-2"><Wallet size={16} /> Taxes & Delivery</span>
+                        <span className="font-semibold text-zinc-900 dark:text-white">₹{(taxes + deliveryFee).toFixed(0)}</span>
+                    </div>
+
+                    <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-4"></div>
+
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-zinc-900 dark:text-white">Total to pay</span>
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-white">₹{total.toFixed(0)}</span>
+                    </div>
+                </div>
             </div>
 
-            {/* Execution Footer Bar */}
+            {/* Bottom Fix Bar */}
             <AnimatePresence>
                 {!showStripeModal && (
                     <motion.div
-                        initial={{ y: 200 }}
+                        initial={{ y: 100 }}
                         animate={{ y: 0 }}
-                        className="fixed bottom-0 left-0 w-full p-6 pb-12 bg-white/95 dark:bg-[#0B0F1A]/95 backdrop-blur-2xl border-t border-gray-100 dark:border-white/5 z-50 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]"
+                        className="fixed bottom-0 w-full p-6 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur-xl border-t border-zinc-100 dark:border-zinc-800 z-50"
                     >
-                        <motion.button
-                            whileTap={{ scale: 0.95 }}
+                        <button
                             onClick={handlePlaceOrder}
                             disabled={loading || cartItems.length === 0}
-                            className={`group w-full max-w-lg mx-auto h-[72px] rounded-[24px] shadow-2xl flex items-center justify-between px-3 relative overflow-hidden transition-all ${loading ? 'bg-slate-200 cursor-not-allowed' : 'bg-slate-900 dark:bg-orange-500 shadow-slate-900/10 dark:shadow-orange-500/20'
-                                }`}
+                            className={`w-full h-[60px] rounded-2xl shadow-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-transform ${
+                                loading ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
+                            }`}
                         >
-                            <div className="relative z-10 bg-white/10 dark:bg-black/10 h-[52px] px-6 rounded-2xl flex items-center backdrop-blur-md">
-                                <span className="font-[900] text-lg text-white font-['Outfit'] italic tracking-tight">₹{total.toFixed(0)}</span>
-                            </div>
-
-                            <div className="absolute left-1/2 -translate-x-1/2 text-center">
-                                <p className="text-[11px] font-black text-white uppercase tracking-[0.3em] leading-none mb-1">
-                                    {loading ? 'Processing...' : 'Place Order'}
-                                </p>
-                            </div>
-
-                            <div className="relative z-10 w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-900 shadow-xl group-hover:translate-x-1 transition-transform">
-                                {loading ? (
-                                    <div className="w-5 h-5 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <ArrowRight size={24} strokeWidth={3} />
-                                )}
-                            </div>
-                        </motion.button>
+                            {loading ? (
+                                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <>
+                                    <span className="font-semibold text-base">Confirm payment - ₹{total.toFixed(0)}</span>
+                                </>
+                            )}
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Premium Stripe Matrix Modal */}
+            {/* Stripe Modal */}
             <AnimatePresence>
                 {showStripeModal && clientSecret && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-end justify-center"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end justify-center"
                     >
                         <motion.div
                             initial={{ y: "100%" }}
                             animate={{ y: 0 }}
                             exit={{ y: "100%" }}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            className="bg-[#FDFDFD] dark:bg-[#0B0F1A] rounded-t-[56px] w-full max-w-lg p-10 pb-16 shadow-2xl relative overflow-y-auto max-h-[92vh]"
+                            className="bg-white dark:bg-[#0A0A0A] rounded-t-[32px] w-full max-w-lg p-6 pb-12 shadow-2xl relative overflow-y-auto max-h-[90vh]"
                         >
-                            <div className="w-16 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full mx-auto mb-10"></div>
+                            <div className="w-12 h-1 bg-zinc-200 dark:bg-zinc-800 rounded-full mx-auto mb-6"></div>
 
-                            <div className="flex justify-between items-start mb-10">
+                            <div className="flex justify-between items-center mb-8">
                                 <div>
-                                    <h2 className="text-3xl font-[900] text-gray-900 dark:text-white font-['Outfit'] italic tracking-tighter mb-1 uppercase">Secure Payment</h2>
-                                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2 italic">
-                                        <ShieldCheck size={12} /> Encrypted Gateway
-                                    </p>
+                                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Pay Securely</h2>
                                 </div>
-                                <button onClick={() => setShowStripeModal(false)} className="w-12 h-12 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center text-slate-400">
-                                    <X size={24} />
+                                <button onClick={() => setShowStripeModal(false)} className="w-8 h-8 bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400">
+                                    <X size={18} />
                                 </button>
                             </div>
 
-                            <div className="bg-white dark:bg-gray-800/40 p-8 rounded-[44px] border border-gray-100 dark:border-white/5 shadow-premium">
+                            <div className="p-4 rounded-3xl bg-zinc-50 dark:bg-zinc-900">
                                 <Elements stripe={stripePromise}>
                                     <StripePayment
                                         clientSecret={clientSecret}
@@ -376,13 +386,11 @@ const Checkout = () => {
                                     />
                                 </Elements>
                             </div>
-
-                            <p className="mt-8 text-center text-[9px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-widest">Safe & Secure Payment</p>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </div>
     );
 };
 
