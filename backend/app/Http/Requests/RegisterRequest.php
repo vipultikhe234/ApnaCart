@@ -27,7 +27,8 @@ class RegisterRequest extends FormRequest
             'phone' => 'required|string|max:20|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'in:admin,customer',
-            'address' => 'nullable|string|max:500'
+            'address' => 'nullable|string|max:500',
+            'fcm_token' => 'nullable|string',
         ];
     }
 }

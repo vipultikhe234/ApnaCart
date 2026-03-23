@@ -59,11 +59,12 @@ const Registration = () => {
         setLoading(true);
         setError('');
         try {
-            const response = await authService.register(formData);
+            const fcm_token = await import('../services/firebase').then(m => m.getFCMToken());
+            const response = await authService.register({ ...formData, fcm_token });
             localStorage.setItem('access_token', response.data.access_token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
             
-            // Sync FCM token after registration
+            // Still initialize to setup listeners
             import('../services/firebase').then(m => m.initializeFirebase());
 
             const from = location.state?.from || '/';

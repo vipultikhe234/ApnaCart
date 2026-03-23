@@ -137,4 +137,13 @@ class FCMController extends Controller
             ], 500);
         }
     }
+    /**
+     * Check if the current user has an FCM token stored.
+     */
+    public function status(Request $request)
+    {
+        return response()->json([
+            'has_token' => !empty($request->user()->fcm_token)
+        ]);
+    }
 }

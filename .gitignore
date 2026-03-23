@@ -12,6 +12,8 @@ mobile/.env
 backend/.env
 auth.json
 *.key
+google-services.json
+firebase-service-account.json
 
 # Build & Cache
 dist/

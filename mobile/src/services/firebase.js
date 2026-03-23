@@ -129,6 +129,25 @@ export const removeFCMToken = async () => {
 };
 
 /**
+ * Get the current FCM token without full initialization/sync.
+ * Useful for attaching to login/register requests.
+ */
+export const getFCMToken = async () => {
+    if (Capacitor.getPlatform() === 'web') return null;
+
+    try {
+        const result = await FirebaseMessaging.checkPermissions();
+        if (result.receive === 'granted') {
+            const tokenResult = await FirebaseMessaging.getToken();
+            return tokenResult.token;
+        }
+    } catch (e) {
+        console.warn('FCM: Failed to get token pre-emptively', e);
+    }
+    return null;
+};
+
+/**
  * Log analytics event.
  */
 export const logEvent = async (name, params = {}) => {

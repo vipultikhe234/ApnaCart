@@ -59,7 +59,7 @@ class FCMService
                             'title' => $title,
                             'body' => $body,
                         ],
-                        'data' => array_map('strval', $data), // V1 data values must be strings
+                        'data' => count($data) > 0 ? array_map('strval', $data) : (object)[],
                         'android' => [
                             'priority' => 'high',
                             'notification' => [
@@ -135,7 +135,7 @@ class FCMService
                 ->post("https://fcm.googleapis.com/v1/projects/{$this->projectId}/messages:send", [
                     'message' => [
                         'token' => $token,
-                        'data' => array_map('strval', $data),
+                        'data' => count($data) > 0 ? array_map('strval', $data) : (object)[],
                         'android' => [
                             'priority' => 'high',
                         ],

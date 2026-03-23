@@ -131,6 +131,7 @@ export const addressService = {
 export const fcmService = {
     saveToken: (token) => api.post('/save-fcm-token', { fcm_token: token }),
     removeToken: () => api.post('/remove-fcm-token'),
+    getStatus: () => api.get('/fcm-status'),
     sendManualNotification: (data) => api.post('/send-notification', data),
 };
 

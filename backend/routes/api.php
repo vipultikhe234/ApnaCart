@@ -94,5 +94,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // FCM Notification Routes
     Route::post('/save-fcm-token', [\App\Http\Controllers\FCMController::class, 'saveToken']);
     Route::post('/remove-fcm-token', [\App\Http\Controllers\FCMController::class, 'removeToken']);
+    Route::get('/fcm-status', [\App\Http\Controllers\FCMController::class, 'status']);
     Route::post('/send-notification', [\App\Http\Controllers\FCMController::class, 'sendManualNotification']);
 });

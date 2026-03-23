@@ -20,7 +20,8 @@ class AuthController extends Controller
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'role' => $request->role ?? 'customer',
-            'address' => $request->address
+            'address' => $request->address,
+            'fcm_token' => $request->fcm_token
         ]);
 
         return response()->json([
@@ -37,6 +38,12 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
+        }
+
+        // Save FCM token if provided during login
+        if ($request->fcm_token) {
+            $user->fcm_token = $request->fcm_token;
+            $user->save();
         }
 
         return response()->json([
