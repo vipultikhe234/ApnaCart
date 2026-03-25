@@ -21,37 +21,49 @@ class CategoryController extends Controller
         $role = $user?->role ?? 'guest';
         $targetId = $request->restaurant_id;
 
-        // Logging
-        \Log::info("Admin-Category-Scoping Trace", [
-            'role' => $role,
-            'merchant_id' => $targetId,
-            'is_auth' => !!$user
-        ]);
+        $cacheKey = "categories_r_" . ($targetId ?? 'all') . "_role_" . $role;
 
-        // 1. Merchant Restriction
-        if ($role === 'merchant') {
-            $restaurantId = $user->restaurant?->id;
-            if (!$restaurantId) return response()->json(['data' => []]);
-            $categories = Category::where('restaurant_id', $restaurantId)
-                                 ->orWhereNull('restaurant_id') // Give them global ones too
-                                 ->with('restaurant')
-                                 ->latest()
-                                 ->get();
-            return CategoryResource::collection($categories);
-        }
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($role, $user, $targetId) {
+            \Log::info("CACHE MISS: Fetching Category data for {$role}/{$targetId}");
 
-        // 2. Admin/SuperAdmin Precision Scoping (Strict selection only)
-        if (in_array($role, ['admin', 'super_admin', 'Admin', 'Super Admin'])) {
-            if (!$targetId) {
-                return response()->json(['data' => []], 200);
+            // 1. Merchant Restriction
+            if ($role === 'merchant') {
+                $restaurantId = $user->restaurant?->id;
+                if (!$restaurantId) return CategoryResource::collection(collect([]));
+                $categories = Category::where('restaurant_id', $restaurantId)
+                                     ->orWhereNull('restaurant_id') 
+                                     ->with('restaurant')
+                                     ->latest()
+                                     ->get();
+                return CategoryResource::collection($categories);
             }
-            $categories = Category::where('restaurant_id', $targetId)->with('restaurant')->latest()->get();
-            return CategoryResource::collection($categories);
-        }
 
-        // 3. Public/Mobile - Global Fetch
-        $categories = Category::with('restaurant')->latest()->get();
-        return CategoryResource::collection($categories);
+            // 2. Admin/SuperAdmin Precision Scoping (Strict selection only)
+            if (in_array($role, ['admin', 'super_admin', 'Admin', 'Super Admin'])) {
+                if (!$targetId) {
+                    return CategoryResource::collection(collect([]));
+                }
+                $categories = Category::where('restaurant_id', $targetId)->with('restaurant')->latest()->get();
+                return CategoryResource::collection($categories);
+            }
+
+            // 3. Public/Mobile - Global Fetch
+            $categories = Category::with('restaurant')->latest()->get();
+            return CategoryResource::collection($categories);
+        });
+    }
+
+    private function clearCategoryCache($restaurantId = null)
+    {
+        $roles = ['guest', 'merchant', 'admin', 'super_admin', 'Admin', 'Super Admin'];
+        foreach ($roles as $role) {
+            if ($restaurantId) {
+                \Illuminate\Support\Facades\Cache::forget("categories_r_{$restaurantId}_role_{$role}");
+            }
+            \Illuminate\Support\Facades\Cache::forget("categories_r_all_role_{$role}");
+            \Illuminate\Support\Facades\Cache::forget("categories_r__role_{$role}");
+        }
+        \Illuminate\Support\Facades\Cache::forget('categories_active');
     }
 
     public function store(CategoryRequest $request)
@@ -59,13 +71,12 @@ class CategoryController extends Controller
         $data = $request->validated();
         if ($request->user()->role === 'merchant') {
             $data['restaurant_id'] = $request->user()->restaurant?->id;
-        } elseif ($request->user()->role === 'admin' && $request->has('restaurant_id')) {
+        } elseif (in_array($request->user()->role, ['admin', 'super_admin', 'Admin', 'Super Admin']) && $request->has('restaurant_id')) {
             $data['restaurant_id'] = $request->restaurant_id;
         }
 
         $category = $this->service->createCategory($data);
-        \Illuminate\Support\Facades\Cache::forget('categories_all');
-        \Illuminate\Support\Facades\Cache::forget('categories_active');
+        $this->clearCategoryCache($category->restaurant_id);
 
         // Broadcast refresh
         $this->fcmService->broadcastData(['type' => 'refresh_categories', 'action' => 'created', 'id' => (string)$category->id]);
@@ -83,9 +94,7 @@ class CategoryController extends Controller
         }
 
         $this->service->updateCategory($id, $request->validated());
-        
-        \Illuminate\Support\Facades\Cache::forget('categories_all');
-        \Illuminate\Support\Facades\Cache::forget('categories_active');
+        $this->clearCategoryCache($category->restaurant_id);
 
         // Broadcast refresh
         $this->fcmService->broadcastData(['type' => 'refresh_categories', 'action' => 'updated', 'id' => (string)$id]);
@@ -102,10 +111,9 @@ class CategoryController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $resId = $category->restaurant_id;
         $this->service->deleteCategory($id);
-        
-        \Illuminate\Support\Facades\Cache::forget('categories_all');
-        \Illuminate\Support\Facades\Cache::forget('categories_active');
+        $this->clearCategoryCache($resId);
 
         // Broadcast refresh
         $this->fcmService->broadcastData(['type' => 'refresh_categories', 'action' => 'deleted', 'id' => (string)$id]);

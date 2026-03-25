@@ -35,9 +35,19 @@ const Categories = () => {
     const debounceRef = useRef(null);
     const merchantRef = useRef(null);
 
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+    const isMerchant = user.role === 'merchant' || user.role === 'Merchant';
+
     const [newCategory, setNewCategory] = useState({
         name: '', image: '', image_url: '', status: true, restaurant_id: ''
     });
+
+    // SYNC NEW CATEGORY WITH SELECTED MERCHANT
+    useEffect(() => {
+        if (showModal && !editingId && selectedMerchant) {
+            setNewCategory(prev => ({ ...prev, restaurant_id: selectedMerchant }));
+        }
+    }, [showModal, selectedMerchant, editingId]);
 
     useEffect(() => { 
         fetchData(); 
@@ -56,14 +66,25 @@ const Categories = () => {
 
     const fetchRestaurants = async () => {
         try {
-            const res = await restaurantService.listAll();
-            const data = res.data.data || [];
+            let data = [];
+            if (isMerchant) {
+                const res = await restaurantService.getProfile();
+                data = res.data.data ? [res.data.data] : [];
+            } else {
+                const res = await restaurantService.listAll();
+                data = res.data.data || [];
+            }
+            
             setRestaurants(data);
-            if (!selectedMerchant && data.length > 0) {
+            
+            if (isMerchant && data.length > 0) {
+                const myId = data[0].id;
+                setSelectedMerchant(myId);
+            } else if (!selectedMerchant && data.length > 0) {
                 setSelectedMerchant(data[0].id);
             }
         } catch (error) {
-            console.error("Error fetching restaurants");
+            console.error("Error fetching restaurant context:", error);
         }
     };
 
@@ -210,18 +231,19 @@ const Categories = () => {
                     <p className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-2">Manage all item groupings.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* CUSTOM MERCHANT SELECTOR */}
+                    {/* MERCHANT INDICATOR */}
                     <div className="relative" ref={merchantRef}>
                         <button
+                            disabled={isMerchant}
                             onClick={() => setShowMerchantDropdown(!showMerchantDropdown)}
-                            className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl flex items-center gap-4 hover:border-emerald-500/50 transition-all shadow-sm"
+                            className={`bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl flex items-center gap-4 transition-all shadow-sm group ${isMerchant ? 'opacity-75 cursor-default' : 'hover:border-emerald-500/50 cursor-pointer'}`}
                         >
                             <Store size={16} className={selectedMerchant === 'all' ? 'text-zinc-400' : 'text-emerald-500'} />
                             <div className="text-left pr-4">
-                                <p className="text-[8px] font-black uppercase text-zinc-500 leading-none mb-1">Scoping Mode</p>
+                                <p className="text-[8px] font-black uppercase text-zinc-500 leading-none mb-1">{isMerchant ? 'Authorized Node' : 'Filtering For'}</p>
                                 <p className="text-[10px] font-black uppercase text-zinc-900 dark:text-white leading-none">{getMerchantName(selectedMerchant)}</p>
                             </div>
-                            <ChevronDown size={14} className={`text-zinc-400 transition-transform ${showMerchantDropdown ? 'rotate-180' : ''}`} />
+                            {!isMerchant && <ChevronDown size={14} className={`text-zinc-400 transition-transform ${showMerchantDropdown ? 'rotate-180' : ''}`} />}
                         </button>
 
                         <AnimatePresence>
@@ -373,18 +395,19 @@ const Categories = () => {
 
                             <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
                                 <div className="space-y-3">
-                                    <label className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em]">Partner Node</label>
+                                    <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.2em]">{isMerchant ? 'Assigned Node' : 'Partner Node'}</label>
                                     <div className="relative">
                                         <select
                                             required
-                                            className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-xl px-5 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer"
+                                            disabled={isMerchant}
+                                            className={`w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-xl px-5 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none ${isMerchant ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                                             value={newCategory.restaurant_id}
                                             onChange={(e) => setNewCategory({ ...newCategory, restaurant_id: e.target.value })}
                                         >
                                             <option value="" className="dark:bg-zinc-900">Select Restaurant</option>
                                             {restaurants.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{r.name}</option>)}
                                         </select>
-                                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                                        {!isMerchant && <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />}
                                     </div>
                                 </div>
 

@@ -1,3 +1,5 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { productService, addressService, restaurantService } from '../services/api';
 import {
     MapPin,
@@ -9,7 +11,8 @@ import {
     Minus,
     User,
     ArrowRight,
-    Utensils
+    Utensils,
+    ShoppingBag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';

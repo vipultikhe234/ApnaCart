@@ -23,33 +23,33 @@ class ProductController extends Controller
         $role = $user?->role ?? 'guest';
         $targetId = $request->restaurant_id;
 
-        // Logging for audit and debugging
-        \Log::info("Admin-Scoping Trace", [
-            'role' => $role,
-            'target_merchant' => $targetId,
-            'is_authenticated' => !!$user
-        ]);
+        // Multidimensional Cache Key
+        $cacheKey = "products_r_" . ($targetId ?? 'all') . "_role_" . $role;
 
-        // 1. Merchant Restriction (Strict isolation)
-        if ($role === 'merchant') {
-            $restaurantId = $user->restaurant?->id;
-            if (!$restaurantId) return response()->json(['data' => []]);
-            $products = \App\Models\Product::where('restaurant_id', $restaurantId)->with(['category', 'restaurant'])->latest()->get();
-            return ProductResource::collection($products);
-        }
+        return Cache::remember($cacheKey, 3600, function () use ($role, $user, $targetId) {
+            \Log::info("CACHE MISS: Fetching Product data for {$role}/{$targetId}");
 
-        // 2. Admin/SuperAdmin Precision Scoping (Enforce One-by-One)
-        if (in_array($role, ['admin', 'super_admin', 'Admin', 'Super Admin'])) {
-            if (!$targetId) {
-                return response()->json(['data' => []], 200); // Admin must select a merchant
+            // 1. Merchant Restriction (Strict isolation)
+            if ($role === 'merchant') {
+                $restaurantId = $user->restaurant?->id;
+                if (!$restaurantId) return ProductResource::collection(collect([]));
+                $products = \App\Models\Product::where('restaurant_id', $restaurantId)->with(['category', 'restaurant', 'reviews'])->latest()->get();
+                return ProductResource::collection($products);
             }
-            $products = \App\Models\Product::where('restaurant_id', $targetId)->with(['category', 'restaurant'])->latest()->get();
-            return ProductResource::collection($products);
-        }
 
-        // 3. Public/Mobile Application (Unified View)
-        $products = \App\Models\Product::with(['category', 'restaurant'])->latest()->get();
-        return ProductResource::collection($products);
+            // 2. Admin/SuperAdmin Precision Scoping (Enforce One-by-One)
+            if (in_array($role, ['admin', 'super_admin', 'Admin', 'Super Admin'])) {
+                if (!$targetId) {
+                    return ProductResource::collection(collect([]));
+                }
+                $products = \App\Models\Product::where('restaurant_id', $targetId)->with(['category', 'restaurant', 'reviews'])->latest()->get();
+                return ProductResource::collection($products);
+            }
+
+            // 3. Public/Mobile Application (Unified View)
+            $products = \App\Models\Product::with(['category', 'restaurant', 'reviews'])->latest()->get();
+            return ProductResource::collection($products);
+        });
     }
 
     public function show($id)
@@ -62,6 +62,23 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
+    private function clearProductCache($restaurantId = null, $productId = null)
+    {
+        $roles = ['guest', 'merchant', 'admin', 'super_admin', 'Admin', 'Super Admin'];
+        foreach ($roles as $role) {
+            if ($restaurantId) {
+                Cache::forget("products_r_{$restaurantId}_role_{$role}");
+            }
+            Cache::forget("products_r_all_role_{$role}");
+            Cache::forget("products_r__role_{$role}"); // Catch null case
+        }
+        
+        Cache::forget('products_all');
+        if ($productId) {
+            Cache::forget("product_{$productId}");
+        }
+    }
+
     public function store(ProductRequest $request)
     {
         $data = $request->validated();
@@ -70,13 +87,12 @@ class ProductController extends Controller
         if ($request->user()->role === 'merchant') {
             $data['restaurant_id'] = $request->user()->restaurant?->id;
             if (!$data['restaurant_id']) return response()->json(['message' => 'No restaurant found'], 400);
-        } elseif ($request->user()->role === 'admin' && $request->has('restaurant_id')) {
+        } elseif (in_array($request->user()->role, ['admin', 'super_admin', 'Admin', 'Super Admin']) && $request->has('restaurant_id')) {
             $data['restaurant_id'] = $request->restaurant_id;
         }
 
         $product = $this->service->createProduct($data);
-        Cache::forget('products_all');     
-        Cache::forget('categories_active');
+        $this->clearProductCache($product->restaurant_id);
 
         // Broadcast refresh to mobile side
         $this->fcmService->broadcastData(['type' => 'refresh_products', 'action' => 'created', 'id' => (string)$product->id]);
@@ -95,9 +111,7 @@ class ProductController extends Controller
         }
 
         $updated = $this->service->updateProduct($id, $request->validated());
-        
-        Cache::forget('products_all');     
-        Cache::forget("product_{$id}");
+        $this->clearProductCache($product->restaurant_id, $id);
 
         // Broadcast refresh to mobile side
         $this->fcmService->broadcastData(['type' => 'refresh_products', 'action' => 'updated', 'id' => (string)$id]);
@@ -115,9 +129,9 @@ class ProductController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $resId = $product->restaurant_id;
         $this->service->deleteProduct($id);
-        Cache::forget('products_all');     
-        Cache::forget("product_{$id}");
+        $this->clearProductCache($resId, $id);
 
         // Broadcast refresh to mobile side
         $this->fcmService->broadcastData(['type' => 'refresh_products', 'action' => 'deleted', 'id' => (string)$id]);
@@ -137,8 +151,8 @@ class ProductController extends Controller
             ['rating'  => $request->rating, 'comment' => $request->comment]
         );
 
-        // Bust product cache so new rating shows
-        Cache::forget("product_{$id}");
+        // Bust product cache
+        $this->clearProductCache(null, $id);
 
         return response()->json([
             'message' => 'Review submitted successfully',

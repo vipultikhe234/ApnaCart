@@ -32,11 +32,13 @@ const Products = () => {
     const [editingId, setEditingId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
-    const [selectedMerchant, setSelectedMerchant] = useState('');
+    const [selectedMerchant, setSelectedMerchant] = useState(localStorage.getItem('last_selected_merchant') || '');
     const [showMerchantDropdown, setShowMerchantDropdown] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [imgLoading, setImgLoading] = useState(false);
     const [nameSuggestions, setNameSuggestions] = useState([]);
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+    const isMerchant = user.role === 'merchant' || user.role === 'Merchant';
 
     const merchantRef = useRef(null);
 
@@ -60,9 +62,16 @@ const Products = () => {
         return `${import.meta.env.VITE_API_URL.replace('/api', '')}/storage/${path}`;
     };
 
+    // Initial Load - Fetch restaurants once
     useEffect(() => {
-        fetchData();
         fetchRestaurants();
+    }, []);
+
+    // Scoped Load - Fetch data when merchant selection changes
+    useEffect(() => {
+        if (selectedMerchant) {
+            fetchData();
+        }
     }, [selectedMerchant]);
 
     useEffect(() => {
@@ -77,14 +86,28 @@ const Products = () => {
 
     const fetchRestaurants = async () => {
         try {
-            const res = await restaurantService.listAll();
-            const data = res.data.data || [];
+            let data = [];
+            if (isMerchant) {
+                const res = await restaurantService.getProfile();
+                data = res.data.data ? [res.data.data] : [];
+            } else {
+                const res = await restaurantService.listAll();
+                data = res.data.data || [];
+            }
+            
             setRestaurants(data);
-            if (!selectedMerchant && data.length > 0) {
-                setSelectedMerchant(data[0].id);
+            
+            if (isMerchant && data.length > 0) {
+                const myId = data[0].id;
+                setSelectedMerchant(myId);
+                localStorage.setItem('last_selected_merchant', myId);
+            } else if (!selectedMerchant && data.length > 0) {
+                const firstId = data[0].id;
+                setSelectedMerchant(firstId);
+                localStorage.setItem('last_selected_merchant', firstId);
             }
         } catch (error) {
-            console.error("Error fetching restaurants");
+            console.error("Error fetching restaurant context:", error);
         }
     };
 
@@ -142,11 +165,18 @@ const Products = () => {
             const url = await fetchRealFoodImage(newProduct.name, true, newProduct.description);
             setNewProduct(prev => ({ ...prev, image: url }));
         } catch (error) {
-            console.error("AI Image Error:", error);
+            console.error("AI Image Generation Error:", error);
         } finally {
             setImgLoading(false);
         }
     };
+
+    // SYNC NEW PRODUCT WITH SELECTED MERCHANT
+    useEffect(() => {
+        if (showModal && !editingId && selectedMerchant) {
+            setNewProduct(prev => ({ ...prev, restaurant_id: selectedMerchant }));
+        }
+    }, [showModal, selectedMerchant, editingId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -226,15 +256,16 @@ const Products = () => {
                     {/* CUSTOM MERCHANT SELECTOR */}
                     <div className="relative" ref={merchantRef}>
                         <button
+                            disabled={isMerchant}
                             onClick={() => setShowMerchantDropdown(!showMerchantDropdown)}
-                            className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl flex items-center gap-4 hover:border-emerald-500/50 transition-all shadow-sm group"
+                            className={`bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl flex items-center gap-4 transition-all shadow-sm group ${isMerchant ? 'opacity-75 cursor-default' : 'hover:border-emerald-500/50 cursor-pointer'}`}
                         >
                             <Store size={16} className={selectedMerchant === 'all' ? 'text-zinc-400' : 'text-emerald-500'} />
                             <div className="text-left pr-4">
-                                <p className="text-[8px] font-black uppercase text-zinc-500 leading-none mb-1">Filtering For</p>
+                                <p className="text-[8px] font-black uppercase text-zinc-500 leading-none mb-1">{isMerchant ? 'Authorized Node' : 'Filtering For'}</p>
                                 <p className="text-[10px] font-black uppercase text-zinc-900 dark:text-white leading-none">{getMerchantName(selectedMerchant)}</p>
                             </div>
-                            <ChevronDown size={14} className={`text-zinc-400 transition-transform ${showMerchantDropdown ? 'rotate-180' : ''}`} />
+                            {!isMerchant && <ChevronDown size={14} className={`text-zinc-400 transition-transform ${showMerchantDropdown ? 'rotate-180' : ''}`} />}
                         </button>
 
                         <AnimatePresence>
@@ -478,18 +509,19 @@ const Products = () => {
                                     
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Partner Node</label>
+                                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{isMerchant ? 'Assigned Node' : 'Partner Node'}</label>
                                             <div className="relative">
                                                 <select
                                                     required
-                                                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer"
+                                                    disabled={isMerchant}
+                                                    className={`w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none ${isMerchant ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                                                     value={newProduct.restaurant_id}
                                                     onChange={(e) => setNewProduct({ ...newProduct, restaurant_id: e.target.value })}
                                                 >
                                                     <option value="" className="dark:bg-zinc-900">Select Partner</option>
                                                     {restaurants.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{r.name}</option>)}
                                                 </select>
-                                                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                                                {!isMerchant && <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />}
                                             </div>
                                         </div>
                                         <div className="space-y-2">
