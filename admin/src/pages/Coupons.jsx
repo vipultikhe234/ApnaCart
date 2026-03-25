@@ -46,7 +46,7 @@ const Coupons = () => {
     const fetchCoupons = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/admin/coupons');
+            const res = await api.get('/coupons');
             setCoupons(res.data.data || []);
         } catch (error) {
             console.error("Error fetching coupons:", error);
@@ -59,9 +59,9 @@ const Coupons = () => {
         e.preventDefault();
         try {
             if (editingId) {
-                await api.put(`/admin/coupons/${editingId}`, form);
+                await api.put(`/coupons/${editingId}`, form);
             } else {
-                await api.post('/admin/coupons', form);
+                await api.post('/coupons', form);
             }
             setShowModal(false);
             setEditingId(null);
@@ -75,7 +75,7 @@ const Coupons = () => {
     const handleDelete = async (id) => {
         if (!window.confirm("Delete coupon?")) return;
         try {
-            await api.delete(`/admin/coupons/${id}`);
+            await api.delete(`/coupons/${id}`);
             fetchCoupons();
         } catch (error) {
             alert("Deletion failed");

@@ -35,18 +35,22 @@ class OrderController extends Controller
     }
 
     /**
-     * Display a single order (Owner or Admin).
+     * Display a single order (Owner, Admin, or Merchant).
      */
     public function show(Request $request, $id)
     {
-        $order = \App\Models\Order::with(['items.product', 'user', 'payment'])->find($id);
+        $order = \App\Models\Order::with(['items.product', 'user', 'payment', 'restaurant'])->find($id);
 
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        // Only the owner or an admin can view the order
-        if ($order->user_id !== $request->user()->id && $request->user()->role !== 'admin') {
+        // Check permissions: Admin, the Customer who placed it, or the Merchant who owns the restaurant
+        $isOwner = $order->user_id === $request->user()->id;
+        $isAdmin = $request->user()->role === 'admin';
+        $isMerchant = $request->user()->role === 'merchant' && $order->restaurant_id === $request->user()->restaurant?->id;
+
+        if (!$isOwner && !$isAdmin && !$isMerchant) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -54,12 +58,16 @@ class OrderController extends Controller
     }
 
     /**
-     * Display a listing of orders (Admin or User specific).
+     * Display a listing of orders (Admin, Merchant, or User specific).
      */
     public function index(Request $request)
     {
         if ($request->user()->role === 'admin') {
             $orders = $this->service->getOrders();
+        } elseif ($request->user()->role === 'merchant') {
+            $restaurantId = $request->user()->restaurant?->id;
+            if (!$restaurantId) return response()->json(['data' => []]);
+            $orders = \App\Models\Order::where('restaurant_id', $restaurantId)->with(['user', 'restaurant'])->latest()->get();
         } else {
             $orders = $this->service->getUserOrders($request->user()->id);
         }
@@ -68,7 +76,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Update the order status (Admin only).
+     * Update the order status (Admin or Merchant).
      */
     public function updateStatus(Request $request, $id)
     {
@@ -76,13 +84,21 @@ class OrderController extends Controller
             'status' => 'required|in:pending,preparing,dispatched,delivered,cancelled'
         ]);
 
+        $order = \App\Models\Order::find($id);
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        // Only Admin or the Merchant owning the restaurant can update status
+        $isAdmin = $request->user()->role === 'admin';
+        $isMerchant = $request->user()->role === 'merchant' && $order->restaurant_id === $request->user()->restaurant?->id;
+
+        if (!$isAdmin && !$isMerchant) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         try {
             $order = $this->service->updateOrderStatus($id, $request->status);
-
-            if (!$order) {
-                return response()->json(['message' => 'Order not found'], 404);
-            }
-
             return response()->json([
                 'message' => 'Order status updated to ' . $request->status,
                 'data' => $order

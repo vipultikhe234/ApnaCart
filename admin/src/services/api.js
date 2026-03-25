@@ -39,9 +39,12 @@ export const authService = {
     login: (data) => api.post('/login', data),
     getProfile: () => api.get('/profile'),
     logout: () => {
-        localStorage.removeItem('access_token');
-        return api.post('/logout');
+        return api.post('/logout').finally(() => {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+        });
     },
+    listUsers: () => api.get('/admin/users'), // Admin only
 };
 
 export const productService = {
@@ -56,15 +59,37 @@ export const productService = {
     }),
 };
 
+export const categoryService = {
+    getAll: () => api.get('/categories'),
+    create: (data) => api.post('/categories', data),
+    update: (id, data) => api.put(`/categories/${id}`, data),
+    delete: (id) => api.delete(`/categories/${id}`),
+};
+
 export const orderService = {
-    placeOrder: (data) => api.post('/orders', data),
     getUserOrders: () => api.get('/orders'),
     getOrder: (id) => api.get(`/orders/${id}`),
     getAllOrders: () => api.get('/orders'),
-    getStats: () => api.get('/admin/stats'),
+    getStats: () => api.get('/stats'), 
     updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
     updatePaymentStatus: (id, status) => api.patch(`/orders/${id}/payment-status`, { status }),
     initiatePayment: (id) => api.post(`/orders/${id}/initiate-payment`),
+};
+
+export const couponService = {
+    getAll: () => api.get('/coupons'),
+    create: (data) => api.post('/coupons', data),
+    update: (id, data) => api.put(`/coupons/${id}`, data),
+    delete: (id) => api.delete(`/coupons/${id}`),
+};
+
+export const restaurantService = {
+    listAll: () => api.get('/admin/restaurants'), // Admin view
+    createMerchant: (data) => api.post('/admin/merchants', data), // Admin action
+    updateMerchant: (id, data) => api.put(`/admin/merchants/${id}`, data), // Admin update
+    getProfile: () => api.get('/merchant/restaurant'), // Merchant view their own
+    updateProfile: (data) => api.put('/merchant/restaurant', data),
+    toggleStatus: (id) => api.patch(`/admin/restaurants/${id}/toggle`), 
 };
 
 export default api;

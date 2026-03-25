@@ -231,7 +231,14 @@ const Orders = () => {
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col">
                                                             <p className="font-bold text-zinc-900 dark:text-white tracking-tight text-sm mb-0.5 uppercase">#ORD-{String(order.id).padStart(4, '0')}</p>
-                                                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                                {order.restaurant && (
+                                                                    <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                                                        {order.restaurant.name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     <td className="py-4 px-4">

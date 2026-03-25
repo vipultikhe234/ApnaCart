@@ -9,12 +9,12 @@ class ProductRepository
 {
     public function getAll(): Collection
     {
-        return Product::with('category')->get();
+        return Product::with(['category', 'restaurant'])->latest()->get();
     }
 
     public function findById(int $id): ?Product
     {
-        return Product::with(['category', 'reviews.user'])->find($id);
+        return Product::with(['category', 'restaurant', 'reviews.user'])->find($id);
     }
 
     public function create(array $data): Product

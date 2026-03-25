@@ -62,10 +62,15 @@ class OrderService
         $totalPrice = ($subtotal + $deliveryFee) - $discount;
         if ($totalPrice < 0) $totalPrice = 0;
 
-        // 3. Wrap order + payment creation in a transaction
-        return \DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId) {
+        // 3. Resolve Restaurant Context (From first item)
+        $firstItemProduct = \App\Models\Product::find($items[0]['product_id'] ?? null);
+        $restaurantId = $firstItemProduct ? $firstItemProduct->restaurant_id : null;
+
+        // 4. Wrap order + payment creation in a transaction
+        return \DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId, $restaurantId) {
             $orderData = [
                 'user_id'        => $data['user_id'],
+                'restaurant_id'  => $restaurantId,
                 'total_price'    => $totalPrice,
                 'status'         => 'pending',
                 'payment_status' => 'pending',

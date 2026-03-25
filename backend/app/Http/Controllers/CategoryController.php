@@ -15,17 +15,55 @@ class CategoryController extends Controller
         protected \App\Services\FCMService $fcmService
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $categories = \Illuminate\Support\Facades\Cache::remember('categories_all', 600, function () {
-            return $this->service->getAllCategories();
-        });
+        $user = $request->user('sanctum');
+        $role = $user?->role ?? 'guest';
+        $targetId = $request->restaurant_id;
+
+        // Logging
+        \Log::info("Admin-Category-Scoping Trace", [
+            'role' => $role,
+            'merchant_id' => $targetId,
+            'is_auth' => !!$user
+        ]);
+
+        // 1. Merchant Restriction
+        if ($role === 'merchant') {
+            $restaurantId = $user->restaurant?->id;
+            if (!$restaurantId) return response()->json(['data' => []]);
+            $categories = Category::where('restaurant_id', $restaurantId)
+                                 ->orWhereNull('restaurant_id') // Give them global ones too
+                                 ->with('restaurant')
+                                 ->latest()
+                                 ->get();
+            return CategoryResource::collection($categories);
+        }
+
+        // 2. Admin/SuperAdmin Precision Scoping (Strict selection only)
+        if (in_array($role, ['admin', 'super_admin', 'Admin', 'Super Admin'])) {
+            if (!$targetId) {
+                return response()->json(['data' => []], 200);
+            }
+            $categories = Category::where('restaurant_id', $targetId)->with('restaurant')->latest()->get();
+            return CategoryResource::collection($categories);
+        }
+
+        // 3. Public/Mobile - Global Fetch
+        $categories = Category::with('restaurant')->latest()->get();
         return CategoryResource::collection($categories);
     }
 
     public function store(CategoryRequest $request)
     {
-        $category = $this->service->createCategory($request->validated());
+        $data = $request->validated();
+        if ($request->user()->role === 'merchant') {
+            $data['restaurant_id'] = $request->user()->restaurant?->id;
+        } elseif ($request->user()->role === 'admin' && $request->has('restaurant_id')) {
+            $data['restaurant_id'] = $request->restaurant_id;
+        }
+
+        $category = $this->service->createCategory($data);
         \Illuminate\Support\Facades\Cache::forget('categories_all');
         \Illuminate\Support\Facades\Cache::forget('categories_active');
 
@@ -37,10 +75,15 @@ class CategoryController extends Controller
 
     public function update(CategoryRequest $request, $id)
     {
-        $updated = $this->service->updateCategory($id, $request->validated());
-        if (!$updated) {
-            return response()->json(['message' => 'Category not found'], 404);
+        $category = Category::find($id);
+        if (!$category) return response()->json(['message' => 'Category not found'], 404);
+
+        if ($request->user()->role === 'merchant' && $category->restaurant_id !== $request->user()->restaurant?->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        $this->service->updateCategory($id, $request->validated());
+        
         \Illuminate\Support\Facades\Cache::forget('categories_all');
         \Illuminate\Support\Facades\Cache::forget('categories_active');
 
@@ -50,12 +93,17 @@ class CategoryController extends Controller
         return response()->json(['message' => 'Category updated successfully']);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $deleted = $this->service->deleteCategory($id);
-        if (!$deleted) {
-            return response()->json(['message' => 'Category not found'], 404);
+        $category = Category::find($id);
+        if (!$category) return response()->json(['message' => 'Category not found'], 404);
+
+        if ($request->user()->role === 'merchant' && $category->restaurant_id !== $request->user()->restaurant?->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        $this->service->deleteCategory($id);
+        
         \Illuminate\Support\Facades\Cache::forget('categories_all');
         \Illuminate\Support\Facades\Cache::forget('categories_active');
 

@@ -15,8 +15,14 @@ class Coupon extends Model
         'value',
         'min_order_amount',
         'expires_at',
-        'is_active'
+        'is_active',
+        'restaurant_id'
     ];
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
 
     protected $casts = [
         'expires_at' => 'datetime',

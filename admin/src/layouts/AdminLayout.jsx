@@ -17,7 +17,9 @@ import {
     X as CloseIcon,
     Moon,
     Sun,
-    Command
+    Command,
+    Utensils,
+    Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,7 +39,6 @@ const AdminLayout = () => {
         const storedUser = localStorage.getItem('user');
         if (storedUser) setUser(JSON.parse(storedUser));
 
-        // Sync dark mode state with document
         if (document.documentElement.classList.contains('dark')) {
             setIsDarkMode(true);
         }
@@ -53,7 +54,6 @@ const AdminLayout = () => {
         }
     };
 
-    // Close sidebar on mobile when route changes
     useEffect(() => {
         if (window.innerWidth < 1024) {
             setIsSidebarOpen(false);
@@ -72,18 +72,43 @@ const AdminLayout = () => {
         }
     };
 
-    const navLinks = [
-        { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-        { to: '/products', label: 'Products', icon: Soup },
-        { to: '/categories', label: 'Categories', icon: FolderTree },
-        { to: '/orders', label: 'Orders', icon: ShoppingBag },
-        { to: '/coupons', label: 'Coupons', icon: TicketPercent },
-        { to: '/users', label: 'Users', icon: UsersIcon },
-    ];
+    // Role-based Navigation logic
+    const getNavLinks = () => {
+        if (!user) return [];
+
+        const common = [
+            { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+        ];
+
+        if (user.role === 'admin') {
+            return [
+                ...common,
+                { to: '/restaurants', label: 'Merchants', icon: Store },
+                { to: '/products', label: 'All Products', icon: Soup },
+                { to: '/categories', label: 'Categories', icon: FolderTree },
+                { to: '/orders', label: 'All Orders', icon: ShoppingBag },
+                { to: '/coupons', label: 'Coupons', icon: TicketPercent },
+                { to: '/users', label: 'Users', icon: UsersIcon },
+            ];
+        }
+
+        if (user.role === 'merchant') {
+            return [
+                ...common,
+                { to: '/products', label: 'My Menu', icon: Utensils },
+                { to: '/categories', label: 'My Categories', icon: FolderTree },
+                { to: '/orders', label: 'Orders', icon: ShoppingBag },
+                { to: '/profile', label: 'Store Profile', icon: Store },
+            ];
+        }
+
+        return common;
+    };
+
+    const navLinks = getNavLinks();
 
     return (
         <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
-            {/* Sidebar Overlay for Mobile */}
             <AnimatePresence>
                 {isSidebarOpen && (
                     <motion.div
@@ -96,7 +121,6 @@ const AdminLayout = () => {
                 )}
             </AnimatePresence>
 
-            {/* Side Navigation */}
             <motion.aside
                 initial={false}
                 animate={{
@@ -106,7 +130,6 @@ const AdminLayout = () => {
                 }}
                 className={`fixed lg:relative h-full bg-white dark:bg-zinc-900 flex flex-col border-r border-zinc-200 dark:border-zinc-800 shrink-0 z-[70] overflow-hidden lg:translate-x-0 ${isSidebarOpen ? 'w-64' : 'w-0'}`}
             >
-                {/* Brand Identity */}
                 <div className="px-6 py-6 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -114,7 +137,9 @@ const AdminLayout = () => {
                         </div>
                         <div>
                             <h1 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-tight leading-none">FoodHub</h1>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Admin Node</p>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                                {user?.role === 'admin' ? 'Super Admin' : 'Merchant Node'}
+                            </p>
                         </div>
                     </div>
                     <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-zinc-400">
@@ -122,9 +147,10 @@ const AdminLayout = () => {
                     </button>
                 </div>
 
-                {/* Navigation Menu */}
                 <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-6 custom-scrollbar">
-                    <p className="px-4 mb-4 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Global Register</p>
+                    <p className="px-4 mb-4 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                        {user?.role === 'admin' ? 'Master Control' : 'Store Management'}
+                    </p>
                     {navLinks.map(({ to, label, icon: Icon }) => {
                         const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
                         return (
@@ -143,32 +169,29 @@ const AdminLayout = () => {
                     })}
                 </nav>
 
-                {/* User Context */}
-                <div className="p-4 mt-auto border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                <div className="p-4 mt-auto border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 space-y-4">
                     {user && (
-                        <div className="mb-4 flex items-center gap-3 px-2">
-                            <div className="w-9 h-9 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm relative shrink-0">
-                                <span className="font-bold text-zinc-900 dark:text-white text-xs">{user.name?.[0]?.toUpperCase()}</span>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full"></div>
+                        <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm relative overflow-hidden group">
+                            <div className="w-9 h-9 bg-zinc-900 dark:bg-white rounded-xl flex items-center justify-center relative shrink-0">
+                                <span className="font-bold text-white dark:text-zinc-900 text-xs">{user.name?.[0]?.toUpperCase()}</span>
+                                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-800 rounded-full animate-pulse"></div>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-bold text-zinc-900 dark:text-white text-[10px] truncate">{user.name}</p>
-                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none mt-1">Super Admin</p>
+                                <p className="font-black text-zinc-900 dark:text-white text-[10px] truncate tracking-tight">{user.name}</p>
+                                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.15em] leading-none mt-1">{user.role}</p>
                             </div>
                         </div>
                     )}
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all font-bold text-[10px] tracking-widest uppercase border border-transparent hover:border-red-100 dark:hover:border-red-900/50"
+                        className="w-full flex items-center justify-center gap-2 h-12 rounded-xl text-zinc-500 hover:text-white hover:bg-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900 transition-all font-black text-[10px] tracking-[0.2em] uppercase border border-zinc-200 dark:border-zinc-800"
                     >
-                        <LogOut size={16} /> Logout
+                        <LogOut size={16} className="rotate-180" /> Logout Session
                     </button>
                 </div>
             </motion.aside>
 
-            {/* Main Stage */}
             <main className="flex-1 flex flex-col overflow-hidden relative">
-                {/* Header */}
                 <header className="h-[64px] px-6 lg:px-8 flex justify-between items-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
                     <div className="flex items-center gap-6">
                         <button
@@ -180,17 +203,9 @@ const AdminLayout = () => {
 
                         <div className="hidden lg:flex items-center gap-3">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Node Sync Active</span>
-                        </div>
-
-                        {/* Search Input */}
-                        <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 w-64 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500/50 transition-all">
-                            <Search size={16} className="text-zinc-400" />
-                            <input
-                                type="text"
-                                placeholder="Universal search..."
-                                className="bg-transparent border-none outline-none text-[10px] font-bold text-zinc-900 dark:text-white w-full uppercase tracking-wider"
-                            />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 uppercase">
+                                {user?.role === 'admin' ? 'Global Admin Synchronized' : 'Store Online & Active'}
+                            </span>
                         </div>
                     </div>
 
@@ -212,12 +227,11 @@ const AdminLayout = () => {
 
                         <div className="hidden sm:flex bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-lg items-center gap-2 border border-emerald-100 dark:border-emerald-950">
                             <ShieldCheck size={14} strokeWidth={2.5} />
-                            <span className="text-[9px] font-bold uppercase tracking-widest">Certified</span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest uppercase">{user?.role}</span>
                         </div>
                     </div>
                 </header>
 
-                {/* Viewport */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar bg-zinc-50 dark:bg-zinc-950">
                     <div className="max-w-[1600px] mx-auto p-6 lg:p-8">
                         <Outlet />

@@ -52,10 +52,18 @@ class CouponController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $query = Coupon::query();
+
+        if ($request->user()?->role === 'merchant') {
+            $restaurantId = $request->user()->restaurant?->id;
+            if (!$restaurantId) return response()->json(['data' => []]);
+            $query->where('restaurant_id', $restaurantId);
+        }
+
         return response()->json([
-            'data' => Coupon::latest()->get()
+            'data' => $query->latest()->get()
         ]);
     }
 
@@ -70,6 +78,11 @@ class CouponController extends Controller
             'is_active' => 'boolean'
         ]);
 
+        if ($request->user()->role === 'merchant') {
+            $validated['restaurant_id'] = $request->user()->restaurant?->id;
+            if (!$validated['restaurant_id']) return response()->json(['message' => 'No restaurant context'], 400);
+        }
+
         $coupon = Coupon::create($validated);
 
         // Broadcast refresh
@@ -81,6 +94,11 @@ class CouponController extends Controller
     public function update(Request $request, $id)
     {
         $coupon = Coupon::findOrFail($id);
+
+        if ($request->user()->role === 'merchant' && $coupon->restaurant_id !== $request->user()->restaurant?->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $validated = $request->validate([
             'code' => 'sometimes|unique:coupons,code,' . $id,
             'type' => 'sometimes|in:fixed,percentage',
@@ -98,9 +116,15 @@ class CouponController extends Controller
         return response()->json(['message' => 'Coupon updated successfully', 'data' => $coupon]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        Coupon::destroy($id);
+        $coupon = Coupon::findOrFail($id);
+
+        if ($request->user()->role === 'merchant' && $coupon->restaurant_id !== $request->user()->restaurant?->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $coupon->delete();
 
         // Broadcast refresh
         $this->fcmService->broadcastData(['type' => 'refresh_coupons', 'action' => 'deleted', 'id' => (string)$id]);

@@ -100,6 +100,13 @@ export const productService = {
         bustCache('/products');
         return api.post(`/products/${id}/reviews`, data);
     },
+    getByRestaurant: (restaurantId) => cachedGet(`/restaurants/${restaurantId}/products`, 2 * 60 * 1000),
+};
+
+// ── Restaurant Service ──────────────────────────────────────────────────────
+export const restaurantService = {
+    getAll: () => cachedGet('/restaurants', 5 * 60 * 1000),      // 5 min cache
+    getById: (id) => cachedGet(`/restaurants/${id}`, 5 * 60 * 1000), 
 };
 
 // ── Order Service ──────────────────────────────────────────────────────────

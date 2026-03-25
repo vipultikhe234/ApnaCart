@@ -11,6 +11,7 @@ class ProductResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'restaurant_id' => $this->restaurant_id,
             'name' => $this->name,
             'description' => $this->description,
             'price' => $this->price,
@@ -24,8 +25,9 @@ class ProductResource extends JsonResource
             'stock' => $this->stock,
             'is_available' => (bool) $this->is_available,
             'category' => new CategoryResource($this->whenLoaded('category')),
+            'restaurant' => $this->whenLoaded('restaurant'),
             'reviews' => ReviewResource::collection($this->whenLoaded('reviews')),
-            'avg_rating' => (float) ($this->reviews->avg('rating') ?? 4.5), // Fallback for UI polish
+            'avg_rating' => (float) ($this->reviews->avg('rating') ?? 4.5), 
             'review_count' => $this->reviews->count(),
             'created_at' => $this->created_at,
         ];

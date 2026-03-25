@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { productService, addressService } from '../services/api';
-import { Link, useNavigate } from 'react-router-dom';
+import { productService, addressService, restaurantService } from '../services/api';
 import {
     MapPin,
     Search,
@@ -10,7 +8,8 @@ import {
     Plus,
     Minus,
     User,
-    ArrowRight
+    ArrowRight,
+    Utensils
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
@@ -18,6 +17,7 @@ import { useCart } from '../context/CartContext';
 const Home = () => {
     const navigate = useNavigate();
     const [categories, setCategories] = useState([]);
+    const [restaurants, setRestaurants] = useState([]);
     const [popularProducts, setPopularProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('All');
@@ -30,12 +30,14 @@ const Home = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [catRes, prodRes] = await Promise.all([
+                const [catRes, prodRes, restRes] = await Promise.all([
                     productService.getCategories(),
-                    productService.getAll()
+                    productService.getAll(),
+                    restaurantService.getAll()
                 ]);
-                setCategories(catRes.data.data);
-                setPopularProducts(prodRes.data.data);
+                setCategories(catRes.data.data || []);
+                setPopularProducts(prodRes.data.data || []);
+                setRestaurants(restRes.data.data || []);
             } catch (error) {
                 console.error("Error fetching mobile home data:", error);
             } finally {
@@ -158,6 +160,48 @@ const Home = () => {
                         >
                             {cat.name}
                         </button>
+                    ))}
+                </div>
+            </motion.div>
+
+            {/* Restaurants Section */}
+            <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-10">
+                <div className="px-6 flex justify-between items-baseline mb-5">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Top Restaurants</h2>
+                    <Link to="/search" className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+                        Show More <ChevronDown size={12} />
+                    </Link>
+                </div>
+                <div className="flex gap-4 overflow-x-auto px-6 no-scrollbar pb-4">
+                    {restaurants.map(rest => (
+                        <Link 
+                            key={rest.id} 
+                            to={`/restaurant/${rest.id}`}
+                            className="bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0 w-72 group"
+                        >
+                            <div className="aspect-[16/9] relative">
+                                <img src={rest.image || 'https://images.unsplash.com/photo-1517248135467-4c7ed9d42339'} alt={rest.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                {!rest.is_open && (
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
+                                        <span className="text-white text-[10px] font-black uppercase tracking-[0.2em] border border-white/40 px-3 py-1.5 rounded-lg">Closed Now</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-4">
+                                <div className="flex justify-between items-start mb-1">
+                                    <h3 className="font-bold text-zinc-900 dark:text-white tracking-tight text-sm uppercase">{rest.name}</h3>
+                                    <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded-md border border-zinc-100 dark:border-zinc-700">
+                                        <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                                        <span className="text-[10px] font-bold text-zinc-900 dark:text-white">4.5</span>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest truncate">{rest.address}</p>
+                                <div className="flex items-center gap-2 mt-3 text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                                    <Clock size={10} className="text-emerald-500" />
+                                    <span>{rest.opening_time} - {rest.closing_time}</span>
+                                </div>
+                            </div>
+                        </Link>
                     ))}
                 </div>
             </motion.div>

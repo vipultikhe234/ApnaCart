@@ -14,7 +14,8 @@ import {
     AlertCircle,
     Activity,
     CheckCircle2,
-    ChevronRight
+    ChevronRight,
+    Store
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -66,15 +67,25 @@ const Dashboard = () => {
     );
 
     const totalOrders = stats?.total_orders ?? orders.length;
-    const totalRevenue = stats?.total_revenue ?? orders.reduce((s, o) => s + parseFloat(o.total_price || 0), 0);
-    const totalUsers = stats?.total_users ?? '0';
-    const totalProducts = stats?.total_products ?? '0';
+    const totalRevenue = stats?.total_revenue ?? 0;
+    const totalUsers = stats?.total_users ?? 0;
+    const totalProducts = stats?.total_products ?? 0;
+    const totalRestaurants = stats?.total_restaurants ?? 0;
     const recentCount = stats?.recent_orders_count ?? 0;
 
     const statusBreakdown = ['pending', 'preparing', 'dispatched', 'delivered', 'cancelled'].map(s => ({
         status: s,
         count: orders.filter(o => o.status === s).length,
     }));
+
+    const statsConfig = [
+        { label: 'Revenue Flow', val: `₹${Number(totalRevenue).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, color: 'emerald', sub: '+12.5% Velocity', show: true },
+        { label: 'Rewards Burn', val: `₹${Number(stats?.total_discounts || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Ticket, color: 'amber', sub: 'Coupon utility', show: stats?.total_discounts !== undefined },
+        { label: 'Order Volume', val: totalOrders, icon: ShoppingBag, color: 'blue', sub: `${recentCount} recent`, show: true },
+        { label: 'Network Users', val: totalUsers, icon: UsersIcon, color: 'purple', sub: 'Total accounts', show: stats?.total_users !== undefined },
+        { label: 'Partner Outlets', val: totalRestaurants, icon: Store, color: 'violet', sub: 'Active nodes', show: stats?.total_restaurants !== undefined },
+        { label: 'Inventory Assets', val: totalProducts, icon: Package, color: 'orange', sub: 'Active menu', show: true }
+    ].filter(s => s.show);
 
     return (
         <motion.div
@@ -101,14 +112,8 @@ const Dashboard = () => {
             </div>
 
             {/* Stat Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {[
-                    { label: 'Revenue Flow', val: `₹${Number(totalRevenue).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, color: 'emerald', sub: '+12.5% Velocity' },
-                    { label: 'Rewards Burn', val: `₹${Number(stats?.total_discounts || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Ticket, color: 'amber', sub: 'Coupon utility' },
-                    { label: 'Order Volume', val: totalOrders, icon: ShoppingBag, color: 'blue', sub: `${recentCount} new today` },
-                    { label: 'Network Users', val: totalUsers, icon: UsersIcon, color: 'purple', sub: 'Total accounts' },
-                    { label: 'Inventory Assets', val: totalProducts, icon: Package, color: 'orange', sub: 'Active menu' }
-                ].map((stat, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xxl:grid-cols-6 gap-6">
+                {statsConfig.map((stat, i) => (
                     <motion.div
                         key={i}
                         variants={itemVariants}

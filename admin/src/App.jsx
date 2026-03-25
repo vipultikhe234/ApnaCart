@@ -6,8 +6,10 @@ import Products from './pages/Products';
 import Categories from './pages/Categories';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
-import Users from './pages/Users';
 import Coupons from './pages/Coupons';
+import RestaurantProfile from './pages/RestaurantProfile';
+import Restaurants from './pages/Restaurants';
+import Users from './pages/Users';
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
           <Route path="orders" element={<Orders />} />
           <Route path="coupons" element={<Coupons />} />
           <Route path="users" element={<Users />} />
+          <Route path="profile" element={<RestaurantProfile />} />
+          <Route path="restaurants" element={<Restaurants />} />
         </Route>
       </Routes>
     </BrowserRouter>

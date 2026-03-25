@@ -15,6 +15,7 @@ class ProductRequest extends FormRequest
     {
         return [
             'category_id' => 'required|exists:categories,id',
+            'restaurant_id' => 'nullable|exists:restaurants,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',

@@ -15,85 +15,75 @@ use App\Http\Controllers\StripeWebhookController;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
 Route::get('/ping', function() { return response()->json(['status' => 'ok']); });
 
-// Public Authentication Routes
+// Public Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 
-// Public Product Routes
-Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index']);
-Route::get('/products/{id}', [\App\Http\Controllers\ProductController::class, 'show']);
-Route::get('/categories', [\App\Http\Controllers\CategoryController::class, 'index']);
-Route::post('/webhooks/stripe', [\App\Http\Controllers\StripeWebhookController::class, 'handle']);
-
-// Protected Routes (Require Bearer Token)
+// Protected Management & User Routes
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/profile', [\App\Http\Controllers\AuthController::class, 'profile']);
-    Route::put('/profile', [\App\Http\Controllers\AuthController::class, 'updateProfile']);
-    Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout']);
+    // Shared Auth & Profile
+    Route::get('/profile', [AuthController::class, 'profile']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/upload', [UploadController::class, 'store']);
     
-    Route::get('/addresses', [\App\Http\Controllers\API\UserAddressController::class, 'index']);
-    Route::post('/addresses', [\App\Http\Controllers\API\UserAddressController::class, 'store']);
+    // Unified Role-Aware Operations (RBAC handled in Controllers)
+    Route::get('/stats', [DashboardController::class, 'stats']);
+    
+    // Shared API for Products (Public GET is outside middleware)
+    Route::post('/products', [ProductController::class, 'store']);
+    Route::put('/products/{id}', [ProductController::class, 'update']);
+    Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+    
+    // Shared API for Categories
+    Route::post('/categories', [CategoryController::class, 'store']);
+    Route::put('/categories/{id}', [CategoryController::class, 'update']);
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+    
+    // Shared API for Orders
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::post('/orders', [OrderController::class, 'store']); // Throttling can be added
+    Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+    Route::patch('/orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus']);
+    
+    // Shared API for Coupons
+    Route::get('/coupons', [CouponController::class, 'index']);
+    Route::post('/coupons', [CouponController::class, 'store']);
+    Route::put('/coupons/{id}', [CouponController::class, 'update']);
+    Route::delete('/coupons/{id}', [CouponController::class, 'destroy']);
+    Route::post('/coupons/validate', [CouponController::class, 'validateCoupon']);
 
-    // --- Admin Only Routes ---
+    // --- Admin-Only Special Ops ---
     Route::middleware('admin')->group(function () {
-        // Prefixed with /admin
-        Route::prefix('admin')->group(function () {
-            Route::get('/stats', [DashboardController::class, 'stats']);
-            Route::get('/coupons', [CouponController::class, 'index']);
-            Route::post('/coupons', [CouponController::class, 'store']);
-            Route::put('/coupons/{id}', [CouponController::class, 'update']);
-            Route::delete('/coupons/{id}', [CouponController::class, 'destroy']);
-        });
-
-        // Non-prefixed (sharing base paths with public routes or direct paths)
-        Route::post('/categories', [CategoryController::class, 'store']);
-        Route::put('/categories/{id}', [CategoryController::class, 'update']);
-        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
-        
-        Route::post('/products', [ProductController::class, 'store']);
-        Route::put('/products/{id}', [ProductController::class, 'update']);
-        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
-        
-        Route::post('/upload', [UploadController::class, 'store']);
-        Route::get('/users', [AuthController::class, 'listUsers']);
-        Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
-        Route::patch('/orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus']);
-        Route::post('/orders/{id}/initiate-payment', [OrderController::class, 'initiatePayment']);
+        Route::get('/admin/restaurants', [\App\Http\Controllers\RestaurantController::class, 'listAll']);
+        Route::post('/admin/merchants', [\App\Http\Controllers\RestaurantController::class, 'store']);
+        Route::put('/admin/merchants/{id}', [\App\Http\Controllers\RestaurantController::class, 'adminUpdate']);
+        Route::patch('/admin/restaurants/{id}/toggle', [\App\Http\Controllers\RestaurantController::class, 'toggleStatus']);
+        Route::get('/admin/users', [AuthController::class, 'listUsers']);
     });
-    // --- End Admin Routes ---
-    
-    // Authenticated User Routes
-    Route::post('/products/{id}/reviews', [\App\Http\Controllers\ProductController::class, 'addReview']);
-    
-    // Cart Routes
-    // Route::post('/cart/add', [CartController::class, 'add']);
-    // Route::get('/cart', [CartController::class, 'index']);
-    
-    // Order Routes with Rate Limiting (10 requests per minute)
-    Route::middleware('throttle:10,1')->group(function () {
-        Route::post('/orders', [\App\Http\Controllers\OrderController::class, 'store']);
+
+    // --- Merchant-Only Special Ops ---
+    Route::middleware('merchant')->group(function () {
+        Route::get('/merchant/restaurant', [\App\Http\Controllers\RestaurantController::class, 'show']);
+        Route::put('/merchant/restaurant', [\App\Http\Controllers\RestaurantController::class, 'update']);
     });
-    Route::get('/orders', [\App\Http\Controllers\OrderController::class, 'index']);
-    Route::get('/orders/{id}', [\App\Http\Controllers\OrderController::class, 'show']);
 
-    // Stripe Payment Confirmation (local dev alternative to webhook)
-    Route::post('/payments/confirm', [\App\Http\Controllers\StripeWebhookController::class, 'confirmPayment']);
+    // User extras
+    Route::get('/addresses', [\App\Http\Controllers\UserAddressController::class, 'index']);
+    Route::post('/addresses', [\App\Http\Controllers\UserAddressController::class, 'store']);
+    Route::post('/products/{id}/reviews', [ProductController::class, 'addReview']);
     
-    // Coupon Routes
-    Route::post('/coupons/validate', [\App\Http\Controllers\CouponController::class, 'validateCoupon']);
-
-    // FCM Notification Routes
+    // Stripe & FCM
+    Route::post('/payments/confirm', [StripeWebhookController::class, 'confirmPayment']);
     Route::post('/save-fcm-token', [\App\Http\Controllers\FCMController::class, 'saveToken']);
     Route::post('/remove-fcm-token', [\App\Http\Controllers\FCMController::class, 'removeToken']);
-    Route::get('/fcm-status', [\App\Http\Controllers\FCMController::class, 'status']);
-    Route::post('/send-notification', [\App\Http\Controllers\FCMController::class, 'sendManualNotification']);
 });

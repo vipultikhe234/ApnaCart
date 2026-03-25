@@ -1,19 +1,28 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\UserAddress;
+use Illuminate\Http\Request;
 
 class UserAddressController extends Controller
 {
+    /**
+     * Get the user's addresses.
+     */
     public function index(Request $request)
     {
-        $addresses = $request->user()->addresses()->orderBy('is_default', 'desc')->latest()->get();
+        $addresses = $request->user()->addresses()
+            ->orderBy('is_default', 'desc')
+            ->latest()
+            ->get();
+            
         return response()->json(['success' => true, 'data' => $addresses]);
     }
 
+    /**
+     * Store a newly created address in storage.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -23,7 +32,7 @@ class UserAddressController extends Controller
 
         if ($request->is_default) {
             $request->user()->addresses()->update(['is_default' => false]);
-            // Update the users table direct address string if they expect it 
+            // Update the users table direct address string fallback
             $request->user()->update(['address' => $request->address_line]);
         }
 
@@ -32,7 +41,7 @@ class UserAddressController extends Controller
             'is_default' => $request->is_default ?? false,
         ]);
 
-        // If it's their first address, make it default and save to user obj
+        // Auto-set default for the first address entry
         if ($request->user()->addresses()->count() === 1) {
             $address->update(['is_default' => true]);
             $request->user()->update(['address' => $request->address_line]);
@@ -40,8 +49,8 @@ class UserAddressController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Address added successfully',
-            'data' => $address
+            'message' => 'Profile address synchronization complete.',
+            'data'    => $address
         ]);
     }
 }

@@ -25,6 +25,7 @@ const Search = lazy(() => import('./pages/Search'));
 const Profile = lazy(() => import('./pages/Profile'));
 const OrderStatus = lazy(() => import('./pages/OrderStatus'));
 const TestFCM = lazy(() => import('./pages/TestFCM'));
+const RestaurantDetail = lazy(() => import('./pages/RestaurantDetail'));
 
 // ── Minimal spinner ────────────────────────
 const PageLoader = () => (
@@ -157,6 +158,7 @@ function App() {
                         <Route path="/order/:id" element={<OrderStatus />} />
                         <Route path="/checkout" element={<Checkout />} />
                         <Route path="/product/:id" element={<ProductDetail />} />
+                        <Route path="/restaurant/:id" element={<RestaurantDetail />} />
                         <Route path="/test-fcm" element={<TestFCM />} />
                     </Routes>
                 </Suspense>
