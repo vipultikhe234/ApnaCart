@@ -1,7 +1,7 @@
-# 🍱 FoodHub: The AI-Powered Merchant Ecosystem
+# 🍱 ApnaCart: The AI-Powered Merchant Ecosystem
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/vipultikhe234/FoodHub/main/docs/hero.png" alt="FoodHub Hero Mockup">
+  <img src="https://raw.githubusercontent.com/vipultikhe234/FoodHub/main/docs/hero.png" alt="ApnaCart Hero Mockup">
 </p>
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel)](https://laravel.com)
@@ -9,18 +9,39 @@
 [![AI-Powered](https://img.shields.io/badge/AI-Production_Studio-orange?style=for-the-badge)](https://openai.com/)
 [![Stripe](https://img.shields.io/badge/Stripe-Financial_Flow-blueviolet?style=for-the-badge&logo=stripe)](https://stripe.com/)
 
-**FoodHub** is a premium, full-stack food delivery and management ecosystem that bridges the gap between local merchants and the global digital economy. Built with a "Merchant-First" philosophy, it leverages generative AI to automate branding and content creation while providing a centralized hub for multi-platform distribution. Recently upgraded with a **Premium E-Commerce UX**, featuring cinematic gradients, glassmorphism, and seamless transactional workflows.
+**ApnaCart** is a premium, full-stack, AI-driven food delivery ecosystem designed to modernize the bridge between local merchants and the digital marketplace. Moving beyond traditional e-commerce, this platform integrates operational efficiency with creative intelligence, providing a "Production Studio" experience for food businesses. Currently upgraded with a **Premium E-Commerce UX**, featuring cinematic gradients, glassmorphism, and seamless transactional workflows.
+
+---
+
+## ⚡ Recent Evolutionary Updates (V1.2)
+
+### 📍 Location-Aware Merchant Discovery
+*   **Localized Ecosystem**: Integrated the **Location Master** module into the mobile experience, allowing users to filter restaurants based on their specific delivery area (e.g., Pune, Mumbai). 
+*   **Global Visibility**: Seamlessly toggle between all active merchants or narrowed, city-specific listings to improve discovery efficiency.
+
+### 🛒 Single-Source Logistics Enforcment
+*   **Operational Validation**: Implemented strict `restaurant_id` consistency in the `CartContext`. Users can no longer mix items from different restaurants, ensuring clean order processing for riders.
+*   **Intelligent Prompting**: Added a premium modal that offers users the choice to clear their existing cart or cancel when switching between different merchant menus.
+
+### 🔗 Merchant-Centric Navigation
+*   **Direct Attribution**: Added "Merchant Info" bridges on product detail pages, enabling users to explore a restaurant's full catalogue with a single tap.
+
+---
+
+> [!IMPORTANT]
+> **Project Standards & Detailed Requirements**: For the full architectural specifications, role-based onboarding rules, and MNC-style folder standards, please refer to the [REQUIREMENTS.md](file:///d:/Projects/Mobile%20Project/Food%20Delivery%20Project/REQUIREMENTS.md) file in the root directory.
 
 ---
 
 ## 🏗️ System Architecture
 
-FoodHub utilizes a robust **Monolithic Service Pattern** for maximum development speed and data integrity, supported by high-performance frontend interfaces.
+ApnaCart utilizes a robust **Monolithic Service Pattern** for maximum development speed and data integrity, supported by high-performance frontend interfaces.
 
 ```mermaid
 graph TD
-    Client[React Mobile/Web App] -->|REST API| AdminPanel[React Admin Studio]
-    AdminPanel -->|Auth/Data| Backend[Laravel API Engine]
+    UserApp[React Mobile App] -->|REST API| Backend[Laravel API Engine]
+    RiderApp[React Rider App] -->|REST API| Backend
+    AdminPanel[React Admin Studio] -->|REST API| Backend
     Backend -->|Store/Retrieve| DB[(MySQL)]
     Backend -->|Process| Stripe[Stripe Payment Gateway]
     
@@ -60,6 +81,7 @@ graph TD
 ### 💳 Secure Financial Flow
 *   **Hybrid Payment Gateway**: Complete integration with Stripe for Credit Cards and native Support for Cash on Delivery (COD).
 *   **Admin-Initiated Payments**: Securely convert COD orders to online transactions directly from the admin panel to minimize delivery risk.
+*   **Independent Rider Ecosystem**: Standalone Rider Application with real-time GPS tracking, mission management, and earnings analytics.
 
 ---
 
@@ -104,6 +126,11 @@ npm run dev
 cd mobile
 npm install
 npm run dev
+
+# For Rider App
+cd rider
+npm install
+npm run dev
 ```
 
 ---
@@ -120,6 +147,7 @@ The project utilizes environment variables for sensitive API keys. Ensure the fo
 .
 ├── admin/               # React Admin Dashboard (Vite)
 ├── mobile/              # React Mobile Customer App
+├── rider/               # React Standalone Rider App
 ├── backend/             # Laravel API & Business Logic
 ├── docker/              # Containerization services
 └── README.md            # You are here

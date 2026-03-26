@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository
 {
-    public function getAll(): Collection
+    public function getAll($restaurantId = null): Collection
     {
-        return Product::with(['category', 'restaurant'])->latest()->get();
+        return Product::byRestaurant($restaurantId)->with(['category', 'restaurant'])->latest()->get();
     }
 
     public function findById(int $id): ?Product

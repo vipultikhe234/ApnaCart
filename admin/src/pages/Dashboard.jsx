@@ -15,20 +15,27 @@ import {
     Activity,
     CheckCircle2,
     ChevronRight,
-    Store
+    Store,
+    Bike
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const STATUS_CONFIG = {
-    pending: { text: 'text-amber-700', bg: 'bg-amber-100', icon: Clock },
-    preparing: { text: 'text-blue-700', bg: 'bg-blue-100', icon: Activity },
-    dispatched: { text: 'text-violet-700', bg: 'bg-violet-100', icon: TrendingUp },
+    placed: { text: 'text-zinc-700', bg: 'bg-zinc-100', icon: Package },
+    accepted: { text: 'text-blue-700', bg: 'bg-blue-100', icon: CheckCircle2 },
+    preparing: { text: 'text-amber-700', bg: 'bg-amber-100', icon: Activity },
+    ready: { text: 'text-emerald-700', bg: 'bg-emerald-100', icon: ShoppingBag },
+    out_for_delivery: { text: 'text-violet-700', bg: 'bg-violet-100', icon: Bike },
     delivered: { text: 'text-emerald-700', bg: 'bg-emerald-100', icon: CheckCircle2 },
+    picked_up: { text: 'text-teal-700', bg: 'bg-teal-100', icon: Store },
     cancelled: { text: 'text-red-700', bg: 'bg-red-100', icon: AlertCircle },
 };
 
+import { useMerchant } from '../contexts/MerchantContext';
+
 const Dashboard = () => {
-    const { orders, stats, loading, error } = useDashboardStats();
+    const { selectedMerchantId } = useMerchant();
+    const { orders, stats, loading, error } = useDashboardStats(selectedMerchantId);
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -73,7 +80,7 @@ const Dashboard = () => {
     const totalRestaurants = stats?.total_restaurants ?? 0;
     const recentCount = stats?.recent_orders_count ?? 0;
 
-    const statusBreakdown = ['pending', 'preparing', 'dispatched', 'delivered', 'cancelled'].map(s => ({
+    const statusBreakdown = ['placed', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'picked_up', 'cancelled'].map(s => ({
         status: s,
         count: orders.filter(o => o.status === s).length,
     }));

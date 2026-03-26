@@ -8,14 +8,17 @@ use Illuminate\Support\Facades\DB;
 
 class OrderRepository
 {
-    public function getAll()
+    public function getAll($restaurantId = null)
     {
-        return Order::with(['user', 'restaurant', 'items.product', 'payment', 'coupon'])->latest()->get();
+        return Order::byRestaurant($restaurantId)
+            ->with(['user', 'restaurant', 'rider', 'items.product', 'payment', 'coupon'])
+            ->latest()
+            ->get();
     }
 
     public function findById($id)
     {
-        return Order::with(['user', 'restaurant', 'items.product', 'payment', 'coupon'])->find($id);
+        return Order::with(['user', 'restaurant', 'rider', 'items.product', 'payment', 'coupon'])->find($id);
     }
 
     public function getUserOrders($userId)

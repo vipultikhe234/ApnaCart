@@ -31,6 +31,7 @@ const Checkout = () => {
     const [clientSecret, setClientSecret] = useState(null);
     const [showStripeModal, setShowStripeModal] = useState(false);
     const [placedOrderId, setPlacedOrderId] = useState(null);
+    const [orderType, setOrderType] = useState('delivery'); // delivery or pickup
 
     const [couponCode, setCouponCode] = useState('');
     const [couponDiscount, setCouponDiscount] = useState(0);
@@ -41,7 +42,7 @@ const Checkout = () => {
     const [newAddress, setNewAddress] = useState('');
     const [isAddingAddress, setIsAddingAddress] = useState(false);
 
-    const deliveryFee = 30.00;
+    const deliveryFee = orderType === 'delivery' ? 30.00 : 0.00;
     const taxes = (Number(subtotal) || 0) * 0.05;
     const finalSubtotal = (Number(subtotal) || 0) - couponDiscount;
     const total = finalSubtotal + deliveryFee + taxes;
@@ -115,8 +116,9 @@ const Checkout = () => {
         setLoading(true);
         try {
             const orderData = {
-                delivery_address: address,
+                delivery_address: orderType === 'pickup' ? 'Self Pickup from Store' : address,
                 payment_method: paymentMethod,
+                order_type: orderType,
                 coupon_code: couponDiscount > 0 ? couponCode : null,
                 items: cartItems.map(item => ({
                     product_id: item.id,
@@ -170,68 +172,97 @@ const Checkout = () => {
             </div>
 
             <div className="px-6 mt-6 space-y-8">
-                {/* Address */}
+                {/* Order Type Selection */}
                 <section>
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Delivery Address</h3>
-                        <button 
-                            onClick={() => setIsAddingAddress(!isAddingAddress)}
-                            className="text-xs font-semibold text-emerald-500"
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Order Type</h3>
+                    <div className="grid grid-cols-2 gap-3 bg-white dark:bg-zinc-900 p-1.5 rounded-[22px] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                        <button
+                            onClick={() => setOrderType('delivery')}
+                            className={`py-3 rounded-[18px] text-xs font-bold transition-all ${
+                                orderType === 'delivery'
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-md'
+                                    : 'bg-transparent text-zinc-500'
+                            }`}
                         >
-                            {isAddingAddress ? 'Cancel' : '+ Add New'}
+                            Home Delivery
+                        </button>
+                        <button
+                            onClick={() => setOrderType('pickup')}
+                            className={`py-3 rounded-[18px] text-xs font-bold transition-all ${
+                                orderType === 'pickup'
+                                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-md'
+                                    : 'bg-transparent text-zinc-500'
+                            }`}
+                        >
+                            Self Pickup
                         </button>
                     </div>
+                </section>
 
-                    {isAddingAddress ? (
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
-                            <textarea
-                                value={newAddress}
-                                onChange={(e) => setNewAddress(e.target.value)}
-                                placeholder="Enter your full new address..."
-                                className="w-full bg-transparent outline-none h-20 text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 resize-none"
-                            />
-                            <button
-                                onClick={handleSaveNewAddress}
-                                disabled={!newAddress.trim()}
-                                className="w-full py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-semibold"
+                {/* Address (Hide if pickup) */}
+                {orderType === 'delivery' && (
+                    <section>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Delivery Address</h3>
+                            <button 
+                                onClick={() => setIsAddingAddress(!isAddingAddress)}
+                                className="text-xs font-semibold text-emerald-500"
                             >
-                                Save Address
+                                {isAddingAddress ? 'Cancel' : '+ Add New'}
                             </button>
                         </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {addresses.length > 0 ? (
-                                addresses.map((addr) => (
-                                    <div 
-                                        key={addr.id}
-                                        onClick={() => setAddress(addr.address_line)}
-                                        className={`p-4 rounded-3xl border cursor-pointer flex gap-3 transition-all ${
-                                            address === addr.address_line 
-                                            ? 'border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800' 
-                                            : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
-                                        }`}
-                                    >
-                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${address === addr.address_line ? 'border-zinc-900 dark:border-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
-                                            {address === addr.address_line && <div className="w-2.5 h-2.5 bg-zinc-900 dark:bg-white rounded-full"></div>}
+
+                        {isAddingAddress ? (
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3">
+                                <textarea
+                                    value={newAddress}
+                                    onChange={(e) => setNewAddress(e.target.value)}
+                                    placeholder="Enter your full new address..."
+                                    className="w-full bg-transparent outline-none h-20 text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 resize-none"
+                                />
+                                <button
+                                    onClick={handleSaveNewAddress}
+                                    disabled={!newAddress.trim()}
+                                    className="w-full py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-semibold"
+                                >
+                                    Save Address
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {addresses.length > 0 ? (
+                                    addresses.map((addr) => (
+                                        <div 
+                                            key={addr.id}
+                                            onClick={() => setAddress(addr.address_line)}
+                                            className={`p-4 rounded-3xl border cursor-pointer flex gap-3 transition-all ${
+                                                address === addr.address_line 
+                                                ? 'border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800' 
+                                                : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
+                                            }`}
+                                        >
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${address === addr.address_line ? 'border-zinc-900 dark:border-white' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                                                {address === addr.address_line && <div className="w-2.5 h-2.5 bg-zinc-900 dark:bg-white rounded-full"></div>}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium text-zinc-900 dark:text-white">{addr.address_line}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium text-zinc-900 dark:text-white">{addr.address_line}</p>
-                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                                        <textarea
+                                            value={address}
+                                            onChange={(e) => setAddress(e.target.value)}
+                                            placeholder="Enter your street address..."
+                                            className="w-full bg-transparent outline-none h-20 text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 resize-none"
+                                        />
                                     </div>
-                                ))
-                            ) : (
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                                    <textarea
-                                        value={address}
-                                        onChange={(e) => setAddress(e.target.value)}
-                                        placeholder="Enter your street address..."
-                                        className="w-full bg-transparent outline-none h-20 text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 resize-none"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </section>
+                                )}
+                            </div>
+                        )}
+                    </section>
+                )}
 
                 {/* Payment */}
                 <section>

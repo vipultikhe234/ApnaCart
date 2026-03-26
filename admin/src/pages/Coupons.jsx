@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import {
     Ticket,
     Plus,
@@ -22,7 +23,10 @@ import {
     Smartphone
 } from 'lucide-react';
 
+import { useMerchant } from '../contexts/MerchantContext';
+
 const Coupons = () => {
+    const { selectedMerchantId } = useMerchant();
     const [coupons, setCoupons] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -34,19 +38,21 @@ const Coupons = () => {
         value: '',
         min_order_amount: 0,
         expires_at: '',
-        is_active: true
+        is_active: true,
+        restaurant_id: selectedMerchantId || ''
     };
 
     const [form, setForm] = useState(initialFormState);
 
     useEffect(() => {
         fetchCoupons();
-    }, []);
+    }, [selectedMerchantId]);
 
     const fetchCoupons = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/coupons');
+            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
+            const res = await api.get(`/coupons${query}`);
             setCoupons(res.data.data || []);
         } catch (error) {
             console.error("Error fetching coupons:", error);
@@ -58,28 +64,37 @@ const Coupons = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const payload = { ...form };
+            if (selectedMerchantId && !payload.restaurant_id) {
+                payload.restaurant_id = selectedMerchantId;
+            }
+
             if (editingId) {
-                await api.put(`/coupons/${editingId}`, form);
+                await api.put(`/coupons/${editingId}`, payload);
             } else {
-                await api.post('/coupons', form);
+                await api.post('/coupons', payload);
             }
             setShowModal(false);
             setEditingId(null);
             setForm(initialFormState);
             fetchCoupons();
+            toast.success(editingId ? "Coupon updated successfully" : "Coupon created successfully");
         } catch (error) {
-            alert("Operation failed");
+            toast.error("Operation failed");
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Delete coupon?")) return;
-        try {
-            await api.delete(`/coupons/${id}`);
-            fetchCoupons();
-        } catch (error) {
-            alert("Deletion failed");
-        }
+        toast(
+            (t) => (
+                <span style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                    Delete this coupon?
+                    <button onClick={async () => { toast.dismiss(t.id); try { await api.delete(`/coupons/${id}`); fetchCoupons(); toast.success("Coupon deleted"); } catch { toast.error("Deletion failed"); }}} style={{background:'#ef4444',color:'#fff',border:'none',borderRadius:'8px',padding:'6px 14px',fontWeight:900,cursor:'pointer',fontSize:'10px',letterSpacing:'0.1em'}}>YES</button>
+                    <button onClick={() => toast.dismiss(t.id)} style={{background:'#27272a',color:'#fff',border:'none',borderRadius:'8px',padding:'6px 14px',fontWeight:900,cursor:'pointer',fontSize:'10px',letterSpacing:'0.1em'}}>NO</button>
+                </span>
+            ),
+            { duration: 6000 }
+        );
     };
 
     if (loading) return (

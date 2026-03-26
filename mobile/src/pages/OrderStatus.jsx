@@ -1,8 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, ClipboardList, ChefHat, Bike, Gift, HelpCircle, MapPin, SearchX, Box, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ClipboardList, ChefHat, Bike, Gift, HelpCircle, MapPin, SearchX, Box, CheckCircle2, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+
+// Create a custom marker icon for the rider
+const riderIcon = new L.Icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3195/3195884.png',
+    iconSize: [38, 38],
+    iconAnchor: [19, 38],
+    popupAnchor: [0, -38],
+});
+
+// Helper component to auto-center the map when rider moves
+const RecenterMap = ({ lat, lng }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (lat && lng) {
+            map.flyTo([lat, lng], 15);
+        }
+    }, [lat, lng, map]);
+    return null;
+};
 
 const OrderStatus = () => {
     const { id } = useParams();
@@ -10,12 +31,24 @@ const OrderStatus = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const steps = [
-        { label: 'Confirmed', status: 'pending', icon: ClipboardList },
+    const deliverySteps = [
+        { label: 'Placed', status: 'placed', icon: ClipboardList },
+        { label: 'Accepted', status: 'accepted', icon: CheckCircle2 },
         { label: 'Preparing', status: 'preparing', icon: ChefHat },
-        { label: 'On the way', status: 'dispatched', icon: Bike },
+        { label: 'Ready', status: 'ready', icon: Box },
+        { label: 'On the way', status: 'out_for_delivery', icon: Bike },
         { label: 'Delivered', status: 'delivered', icon: Gift },
     ];
+
+    const pickupSteps = [
+        { label: 'Placed', status: 'placed', icon: ClipboardList },
+        { label: 'Accepted', status: 'accepted', icon: CheckCircle2 },
+        { label: 'Preparing', status: 'preparing', icon: ChefHat },
+        { label: 'Ready to Pick', status: 'ready', icon: Box },
+        { label: 'Picked Up', status: 'picked_up', icon: Gift },
+    ];
+
+    const steps = order?.order_type === 'pickup' ? pickupSteps : deliverySteps;
 
     useEffect(() => {
         let attempts = 0;
@@ -86,6 +119,34 @@ const OrderStatus = () => {
             </div>
 
             <div className="px-6 mt-6 space-y-6">
+                {/* Map Tracking (Show if Out for Delivery) */}
+                {order.status === 'out_for_delivery' && (
+                    <div className="h-[250px] w-full rounded-[32px] overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm relative">
+                        <MapContainer 
+                            center={[order.rider?.current_latitude || 28.6139, order.rider?.current_longitude || 77.2090]} 
+                            zoom={15} 
+                            style={{ height: '100%', width: '100%' }}
+                            zoomControl={false}
+                        >
+                            <TileLayer
+                                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                attribution='&copy; OpenStreetMap contributors'
+                            />
+                            {order.rider?.current_latitude && (
+                                <Marker position={[order.rider.current_latitude, order.rider.current_longitude]} icon={riderIcon}>
+                                    <Popup>
+                                        <div className="text-xs font-bold">Rider is here!</div>
+                                    </Popup>
+                                </Marker>
+                            )}
+                            <RecenterMap lat={order.rider?.current_latitude} lng={order.rider?.current_longitude} />
+                        </MapContainer>
+                        <div className="absolute top-4 left-4 z-[500] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                             <span className="text-[10px] font-bold uppercase text-zinc-900 dark:text-white">Live Tracking</span>
+                        </div>
+                    </div>
+                )}
                 {/* Progress Hub */}
                 <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                     <div className="relative">
@@ -130,14 +191,18 @@ const OrderStatus = () => {
                     </div>
                 </div>
 
-                {/* Delivery Address */}
+                {/* Delivery Address / Pickup Info */}
                 <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-start gap-4">
                     <div className="w-10 h-10 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 shrink-0 border border-zinc-100 dark:border-zinc-700">
-                        <MapPin size={18} />
+                        {order.order_type === 'pickup' ? <Store size={18} /> : <MapPin size={18} />}
                     </div>
                     <div>
-                        <p className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-1">Delivery Address</p>
-                        <p className="font-semibold text-zinc-900 dark:text-white text-sm leading-relaxed">{order.address || 'Standard Location'}</p>
+                        <p className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider mb-1">
+                            {order.order_type === 'pickup' ? 'Store Pickup Location' : 'Delivery Address'}
+                        </p>
+                        <p className="font-semibold text-zinc-900 dark:text-white text-sm leading-relaxed">
+                            {order.order_type === 'pickup' ? (order.restaurant?.address || 'Self Pickup from Store') : (order.address || 'Standard Location')}
+                        </p>
                     </div>
                 </div>
 

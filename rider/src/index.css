@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-[#0A0B10] text-slate-100 antialiased font-['Inter'] selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden;
+        -webkit-tap-highlight-color: transparent;
+        scroll-behavior: smooth;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-['Outfit'] tracking-tight;
+    }
+}

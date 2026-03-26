@@ -3,6 +3,7 @@ import { orderService } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePayment from '../components/StripePayment';
+import { toast } from 'react-hot-toast';
 import {
     Clock,
     Activity,
@@ -30,10 +31,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const STATUS_CONFIG = {
-    pending: { color: 'text-amber-600', dot: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', label: 'Pending' },
-    preparing: { color: 'text-blue-600', dot: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Preparing' },
-    dispatched: { color: 'text-zinc-600', dot: 'bg-zinc-500', bg: 'bg-zinc-50 dark:bg-zinc-800/50', label: 'Dispatched' },
+    placed: { color: 'text-zinc-600', dot: 'bg-zinc-500', bg: 'bg-zinc-50 dark:bg-zinc-800/50', label: 'Placed' },
+    accepted: { color: 'text-blue-600', dot: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Accepted' },
+    preparing: { color: 'text-amber-600', dot: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', label: 'Preparing' },
+    ready: { color: 'text-emerald-600', dot: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/20', label: 'Ready' },
+    out_for_delivery: { color: 'text-violet-600', dot: 'bg-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/20', label: 'On Way' },
     delivered: { color: 'text-emerald-600', dot: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/20', label: 'Delivered' },
+    picked_up: { color: 'text-teal-600', dot: 'bg-teal-500', bg: 'bg-teal-50 dark:bg-teal-900/20', label: 'Picked Up' },
     cancelled: { color: 'text-red-600', dot: 'bg-red-500', bg: 'bg-red-50 dark:bg-red-900/20', label: 'Cancelled' },
 };
 
@@ -44,7 +48,10 @@ const PAY_STATUS = {
     refunded: 'bg-zinc-900 text-white',
 };
 
+import { useMerchant } from '../contexts/MerchantContext';
+
 const Orders = () => {
+    const { selectedMerchantId } = useMerchant();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState('all');
@@ -54,12 +61,12 @@ const Orders = () => {
     const [clientSecret, setClientSecret] = useState('');
     const [pendingStatusUpdate, setPendingStatusUpdate] = useState(null);
 
-    useEffect(() => { fetchOrders(); }, []);
+    useEffect(() => { fetchOrders(); }, [selectedMerchantId]);
 
     const fetchOrders = async () => {
         try {
             setLoading(true);
-            const response = await orderService.getAllOrders();
+            const response = await orderService.getAllOrders(selectedMerchantId);
             const data = response.data.data || response.data || [];
             setOrders(Array.isArray(data) ? data : []);
         } catch (error) {
@@ -83,7 +90,7 @@ const Orders = () => {
                 setStripeModal({ show: true, orderId: id });
                 return;
             } catch (error) {
-                alert(`Failed to initiate payment: ${error.message}`);
+                toast.error(`Failed to initiate payment: ${error.message}`);
                 setUpdatingId(null);
                 return;
             }
@@ -96,7 +103,7 @@ const Orders = () => {
             await orderService.updateStatus(id, newStatus);
         } catch (error) {
             setOrders(prev => prev.map(o => o.id === id ? { ...o, status: prevStatus } : o));
-            alert(`Status update failed`);
+            toast.error(`Status update failed`);
         } finally {
             setUpdatingId(null);
         }
@@ -112,7 +119,7 @@ const Orders = () => {
             setStripeModal({ show: false, orderId: null });
             setPendingStatusUpdate(null);
         } catch (error) {
-            alert(`Update failed`);
+            toast.error(`Update failed`);
         } finally {
             setUpdatingId(null);
         }
@@ -126,7 +133,7 @@ const Orders = () => {
             await orderService.updatePaymentStatus(id, newPayStatus);
         } catch (error) {
             setOrders(prev => prev.map(o => o.id === id ? { ...o, payment_status: prevPayStatus } : o));
-            alert(`Payment update failed`);
+            toast.error(`Payment update failed`);
         } finally {
             setUpdatingId(null);
         }
@@ -167,8 +174,8 @@ const Orders = () => {
                 </div>
 
                 {/* KPI Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {['pending', 'preparing', 'dispatched', 'delivered', 'cancelled'].map((key) => {
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                    {['placed', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'picked_up', 'cancelled'].map((key) => {
                         const cfg = STATUS_CONFIG[key];
                         const count = statusCounts[key] || 0;
                         const isActive = filterStatus === key;
@@ -284,10 +291,13 @@ const Orders = () => {
                                                             disabled={isUpdating}
                                                             className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-[9px] font-bold uppercase rounded-xl px-2.5 py-1.5 outline-none border border-zinc-200 dark:border-zinc-700 tracking-widest cursor-pointer shadow-inner"
                                                         >
-                                                            <option value="pending">Wait</option>
+                                                            <option value="placed">Place</option>
+                                                            <option value="accepted">Accept</option>
                                                             <option value="preparing">Prep</option>
-                                                            <option value="dispatched">Ship</option>
+                                                            <option value="ready">Ready</option>
+                                                            <option value="out_for_delivery">Ship</option>
                                                             <option value="delivered">Done</option>
+                                                            <option value="picked_up">Pick</option>
                                                             <option value="cancelled">Void</option>
                                                         </select>
                                                     </td>

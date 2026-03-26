@@ -55,7 +55,7 @@ const TestFCM = () => {
             const response = await fcmService.sendManualNotification({
                 user_id: user.id,
                 title: 'Test Notification 🚀',
-                message: 'This is a test notification from the FoodHub Test Panel.',
+                message: 'This is a test notification from the ApnaCart Test Panel.',
                 data: { type: 'test', timestamp: new Date().toISOString() }
             });
 

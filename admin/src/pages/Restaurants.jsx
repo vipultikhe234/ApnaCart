@@ -1,32 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { restaurantService } from '../services/api';
+import { restaurantService, locationService } from '../services/api';
+import { toast } from 'react-hot-toast';
 import { 
     Store, 
     Search, 
     Plus, 
-    MoreVertical, 
     MapPin, 
-    Phone, 
     Clock, 
     ShieldCheck, 
-    ShieldAlert,
-    ExternalLink,
     Loader2,
-    CheckCircle2,
     XCircle,
     ArrowRight,
     Edit3,
-    RefreshCw
+    Globe,
+    RefreshCw,
+    Eye,
+    Mail,
+    Phone,
+    Calendar,
+    ChevronRight,
+    SearchX,
+    UserCircle,
+    Info,
+    Share2,
+    Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useMerchant } from '../contexts/MerchantContext';
+
 const Restaurants = () => {
+    const { setMerchants } = useMerchant();
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [updatingId, setUpdatingId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [viewingMerchant, setViewingMerchant] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     
     const initialFormState = {
@@ -35,22 +47,31 @@ const Restaurants = () => {
         password: '',
         restaurant_name: '',
         address: '',
+        country_id: '',
+        state_id: '',
+        city_id: '',
         image: '',
         opening_time: '09:00:00',
         closing_time: '22:00:00'
     };
     
     const [formData, setFormData] = useState(initialFormState);
+    const [countries, setCountries] = useState([]);
+    const [formStates, setFormStates] = useState([]);
+    const [formCities, setFormCities] = useState([]);
 
     useEffect(() => {
         fetchRestaurants();
+        locationService.getCountries().then(r => setCountries(r.data)).catch(() => {});
     }, []);
 
     const fetchRestaurants = async () => {
         try {
             setLoading(true);
             const res = await restaurantService.listAll();
-            setRestaurants(res.data.data || []);
+            const data = res.data.data || [];
+            setRestaurants(data);
+            setMerchants(data); // Sync global context
         } catch (error) {
             console.error("Error fetching data:", error);
             setRestaurants([]);
@@ -66,8 +87,9 @@ const Restaurants = () => {
             setRestaurants(prev => prev.map(r => 
                 r.id === id ? { ...r, is_active: !r.is_active } : r
             ));
+            toast.success("Status updated successfully.");
         } catch (error) {
-            alert("Failed to update status. Please try again.");
+            toast.error("Failed to update status. Please try again.");
         } finally {
             setUpdatingId(null);
         }
@@ -81,11 +103,32 @@ const Restaurants = () => {
             password: '', 
             restaurant_name: rest.name || '',
             address: rest.address || '',
+            country_id: rest.country_id || '',
+            state_id: rest.state_id || '',
+            city_id: rest.city_id || '',
             image: rest.image || '',
             opening_time: rest.opening_time || '09:00:00',
             closing_time: rest.closing_time || '22:00:00'
         });
+        if (rest.country_id) locationService.getStates(rest.country_id).then(r => setFormStates(r.data));
+        if (rest.state_id) locationService.getCities(rest.state_id).then(r => setFormCities(r.data));
         setIsModalOpen(true);
+    };
+
+    const handleFormCountry = async (cId) => {
+        setFormData(d => ({ ...d, country_id: cId, state_id: '', city_id: '' }));
+        setFormStates([]); setFormCities([]);
+        if (!cId) return;
+        const r = await locationService.getStates(cId);
+        setFormStates(r.data);
+    };
+
+    const handleFormState = async (sId) => {
+        setFormData(d => ({ ...d, state_id: sId, city_id: '' }));
+        setFormCities([]);
+        if (!sId) return;
+        const r = await locationService.getCities(sId);
+        setFormCities(r.data);
     };
 
     const handleSaveMerchant = async (e) => {
@@ -94,41 +137,52 @@ const Restaurants = () => {
         try {
             if (editingId) {
                 const res = await restaurantService.updateMerchant(editingId, formData);
-                setRestaurants(prev => prev.map(r => r.id === editingId ? res.data.restaurant : r));
+                const updated = res.data.restaurant;
+                setRestaurants(prev => prev.map(r => r.id === editingId ? updated : r));
+                setMerchants(prev => prev.map(r => r.id === editingId ? updated : r)); // Sync global
             } else {
                 const res = await restaurantService.createMerchant(formData);
-                setRestaurants(prev => [res.data.restaurant, ...prev]);
+                const newlyCreated = res.data.restaurant;
+                setRestaurants(prev => [newlyCreated, ...prev]);
+                setMerchants(prev => [newlyCreated, ...prev]); // Sync global
             }
             setIsModalOpen(false);
             setEditingId(null);
             setFormData(initialFormState);
+            toast.success(editingId ? "Merchant updated successfully!" : "Merchant created successfully!");
         } catch (error) {
             const msg = error.response?.data?.message || "Error saving data.";
-            alert(msg);
+            toast.error(msg);
         } finally {
             setFormLoading(false);
         }
     };
 
+    const handleViewDetail = (merchant) => {
+        setViewingMerchant(merchant);
+        setIsViewModalOpen(true);
+    };
+
     const filtered = (restaurants || []).filter(r => 
         (r?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r?.address || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (r?.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r?.merchant?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
             <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-            <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Loading Restaurants...</p>
+            <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Loading Merchants...</p>
         </div>
     );
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 font-sans pb-20">
             {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none uppercase">Restaurants</h1>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-[0.2em] mt-3">Manage all merchant partners and outlets.</p>
+                    <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none uppercase">Merchant Partners</h1>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-3">Enterprise-wide merchant fleet management.</p>
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -143,8 +197,8 @@ const Restaurants = () => {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" size={16} />
                         <input 
                             type="text"
-                            placeholder="Search..."
-                            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 pl-12 pr-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-wider outline-none focus:ring-4 focus:ring-emerald-500/5 w-64 transition-all"
+                            placeholder="SEARCH MERCHANTS..."
+                            className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 pl-12 pr-6 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-wider outline-none focus:ring-4 focus:ring-emerald-500/5 w-64 transition-all dark:text-white"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -152,15 +206,148 @@ const Restaurants = () => {
                     
                     <button 
                         onClick={() => { setEditingId(null); setFormData(initialFormState); setIsModalOpen(true); }}
-                        className="bg-emerald-500 text-white px-6 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-3 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all outline-none"
+                        className="bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-3 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all outline-none"
                     >
                         <Plus size={18} strokeWidth={3} />
-                        Add Restaurant
+                        Add Merchant
                     </button>
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* ── Table List View ── */}
+            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-left">
+                        <thead>
+                            <tr className="bg-zinc-50/50 dark:bg-zinc-800/60 text-zinc-400 text-[9px] uppercase tracking-[0.2em] font-black border-b border-zinc-100 dark:border-zinc-800">
+                                <th className="px-8 py-5">Merchant / Outlet</th>
+                                <th className="py-5 px-6">Status</th>
+                                <th className="py-5 px-6">Location</th>
+                                <th className="py-5 px-6">Owner</th>
+                                <th className="px-8 py-5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            {filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="py-24 text-center">
+                                        <div className="flex flex-col items-center justify-center opacity-30">
+                                            <SearchX size={48} className="text-zinc-400" />
+                                            <p className="text-xs font-black uppercase tracking-widest mt-4 text-zinc-500">No merchants found</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filtered.map((rest) => (
+                                    <motion.tr
+                                        key={rest.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="group hover:bg-zinc-50/40 dark:hover:bg-zinc-800/40 transition-colors"
+                                    >
+                                        {/* Merchant Name + Image */}
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700 shadow-sm shrink-0">
+                                                    <img 
+                                                        src={rest.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5'} 
+                                                        alt={rest.name}
+                                                        className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500 scale-110 group-hover:scale-125"
+                                                    />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-black text-zinc-900 dark:text-white tracking-tight text-[15px] mb-1 group-hover:text-emerald-500 transition-colors leading-none truncate">{rest.name}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock size={10} className="text-zinc-400" />
+                                                        <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest font-mono">
+                                                            {rest.opening_time?.slice(0,5)} - {rest.closing_time?.slice(0,5)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* Status */}
+                                        <td className="py-5 px-6">
+                                            <div className="flex flex-col gap-1.5">
+                                                <button 
+                                                    onClick={() => handleToggleStatus(rest.id)}
+                                                    disabled={updatingId === rest.id}
+                                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border transition-all ${
+                                                        rest.is_active 
+                                                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40' 
+                                                            : 'bg-rose-50 dark:bg-rose-950/40 text-rose-500 dark:text-rose-400 border-rose-100 dark:border-rose-900/40'
+                                                    }`}
+                                                >
+                                                    {updatingId === rest.id ? <Loader2 size={10} className="animate-spin" /> : <div className={`w-1.5 h-1.5 rounded-full ${rest.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />}
+                                                    {rest.is_active ? 'Active' : 'Inactive'}
+                                                </button>
+                                                <span className={`text-[8px] font-black uppercase tracking-widest ml-1 ${rest.is_open ? 'text-blue-500' : 'text-zinc-400'}`}>
+                                                    {rest.is_open ? '● Accepting Orders' : '● Closed'}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Location */}
+                                        <td className="py-5 px-6">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 text-[10px] uppercase font-black tracking-tight">
+                                                    <MapPin size={11} className="text-rose-500 shrink-0" />
+                                                    <span className="truncate max-w-[200px]">{rest.address}</span>
+                                                </div>
+                                                {rest.city && (
+                                                    <div className="flex items-center gap-2 text-zinc-400 text-[9px] uppercase font-bold tracking-widest ml-5">
+                                                        <span>{rest.city.name}, {rest.state?.name}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        {/* Owner Info */}
+                                        <td className="py-5 px-6">
+                                            {rest.merchant ? (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-700 text-zinc-500 font-black text-[10px] shrink-0 uppercase">
+                                                        {rest.merchant.name?.[0]}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[11px] font-black text-zinc-900 dark:text-white leading-none mb-1 truncate">{rest.merchant.name}</p>
+                                                        <p className="text-[9px] text-zinc-400 font-medium truncate">{rest.merchant.email}</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">—</span>
+                                            )}
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-8 py-5 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button 
+                                                    onClick={() => handleViewDetail(rest)}
+                                                    className="p-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-blue-500 hover:text-white rounded-xl text-zinc-500 dark:text-zinc-400 transition-all shadow-sm"
+                                                    title="View Details"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => openEditModal(rest)}
+                                                    className="p-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-emerald-500 hover:text-white rounded-xl text-zinc-500 dark:text-zinc-400 transition-all shadow-sm"
+                                                    title="Edit Merchant"
+                                                >
+                                                    <Edit3 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </motion.tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* ── Add/Edit Modal (Existing) ── */}
             <AnimatePresence>
                 {isModalOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-8 overflow-y-auto">
@@ -181,7 +368,7 @@ const Restaurants = () => {
                                 <div className="flex items-center justify-between mb-10">
                                     <div>
                                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white uppercase tracking-tight leading-none">
-                                            {editingId ? 'Edit Restaurant' : 'Add New Restaurant'}
+                                            {editingId ? 'Edit Merchant' : 'Add New Merchant'}
                                         </h2>
                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-2">
                                             {editingId ? 'Update details below.' : 'Fill in the details for the new merchant.'}
@@ -203,12 +390,31 @@ const Restaurants = () => {
                                             </div>
                                         </div>
                                         <div className="space-y-6">
-                                            <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Restaurant Details</p>
+                                            <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Merchant Outlet</p>
                                             <div className="space-y-4">
-                                                <input required name="val_rest" type="text" placeholder="Restaurant Name" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.restaurant_name} onChange={(e) => setFormData({...formData, restaurant_name: e.target.value})} />
-                                                <input required name="val_addr" type="text" placeholder="Address" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
-                                                <input name="val_img" type="text" placeholder="Image URL" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} />
+                                                <input required name="val_rest" type="text" placeholder="Merchant / Outlet Name" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.restaurant_name} onChange={(e) => setFormData({...formData, restaurant_name: e.target.value})} />
+                                                <input required name="val_addr" type="text" placeholder="Street Address" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
+                                                <input name="val_img" type="text" placeholder="Image URL (optional)" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} />
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Location Row */}
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">Location <span className="text-zinc-400 font-bold">(Optional — merchant can set later)</span></p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <select value={formData.country_id} onChange={e => handleFormCountry(e.target.value)} className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all">
+                                                <option value="">Country</option>
+                                                {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                            <select value={formData.state_id} onChange={e => handleFormState(e.target.value)} disabled={!formData.country_id} className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all disabled:opacity-40">
+                                                <option value="">State</option>
+                                                {formStates.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                            <select value={formData.city_id} onChange={e => setFormData({...formData, city_id: e.target.value})} disabled={!formData.state_id} className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all disabled:opacity-40">
+                                                <option value="">City</option>
+                                                {formCities.map(ci => <option key={ci.id} value={ci.id}>{ci.name}</option>)}
+                                            </select>
                                         </div>
                                     </div>
 
@@ -218,7 +424,7 @@ const Restaurants = () => {
                                             type="submit" 
                                             className="w-full h-16 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-3xl font-black text-xs uppercase tracking-[0.3em] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                                         >
-                                            {formLoading ? <Loader2 size={24} className="animate-spin" /> : <>{editingId ? 'Update Restaurant' : 'Save Restaurant'} <ArrowRight size={20} strokeWidth={3} /></>}
+                                            {formLoading ? <Loader2 size={24} className="animate-spin" /> : <>{editingId ? 'Update Merchant' : 'Save Merchant'} <ArrowRight size={20} strokeWidth={3} /></>}
                                         </button>
                                     </div>
                                 </form>
@@ -228,101 +434,153 @@ const Restaurants = () => {
                 )}
             </AnimatePresence>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-                {filtered.map((rest) => (
-                    <motion.div 
-                        key={rest.id}
-                        layout
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden group hover:shadow-2xl transition-all duration-500 relative"
-                    >
-                        {/* Status Header */}
-                        <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                            <img 
-                                src={rest.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5'} 
-                                alt={rest.name}
-                                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-90 group-hover:opacity-100"
-                            />
-                            <div className="absolute top-6 left-6 flex flex-col gap-2">
-                                <span className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl border ${
-                                    rest.is_active 
-                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-lg shadow-emerald-500/10' 
-                                    : 'bg-rose-500/20 text-rose-400 border-rose-500/20'
-                                }`}>
-                                    {rest.is_active ? 'Active' : 'Inactive'}
-                                </span>
-                            </div>
-                            
-                            <button 
-                                onClick={() => openEditModal(rest)}
-                                className="absolute top-6 right-6 h-12 w-12 bg-white/20 hover:bg-emerald-500 backdrop-blur-xl rounded-2xl flex items-center justify-center text-white transition-all group/edit z-10"
-                            >
-                                <Edit3 size={18} className="group-hover/edit:scale-110 transition-transform" />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-8">
-                            <div className="flex items-start justify-between mb-8">
-                                <div className="min-w-0">
-                                    <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight truncate group-hover:text-emerald-500 transition-colors leading-none">
-                                        {rest.name}
-                                    </h3>
-                                    <div className="flex items-center gap-2.5 mt-3">
-                                        <div className={`w-2 h-2 rounded-full ${rest.is_open ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500'} animate-pulse`}></div>
-                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
-                                            {rest.is_open ? 'Open Now' : 'Closed'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="w-14 h-14 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl flex items-center justify-center border border-zinc-100 dark:border-zinc-700 text-zinc-400 group-hover:text-emerald-500 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/20 transition-all">
-                                    <Store size={24} />
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 mb-8">
-                                <div className="flex items-center gap-4 text-zinc-500 dark:text-zinc-400">
-                                    <MapPin size={16} className="shrink-0 text-emerald-500" />
-                                    <span className="text-xs font-bold uppercase tracking-tight truncate">{rest.address}</span>
-                                </div>
-                                <div className="flex items-center gap-4 text-zinc-500 dark:text-zinc-400">
-                                    <Clock size={16} className="shrink-0 text-blue-500" />
-                                    <span className="text-xs font-bold uppercase tracking-tight font-mono">{rest.opening_time?.slice(0,5)} - {rest.closing_time?.slice(0,5)}</span>
-                                </div>
-                                {rest.merchant && (
-                                    <div className="mt-6 flex items-center gap-4 p-4 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-all group-hover:bg-white dark:group-hover:bg-zinc-800">
-                                        <ShieldCheck size={18} className="shrink-0 text-emerald-500" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1.5">Owner</p>
-                                            <p className="text-xs font-black text-zinc-900 dark:text-white truncate uppercase">{rest.merchant.name}</p>
+            {/* ── Detail View Modal (New) ── */}
+            <AnimatePresence>
+                {isViewModalOpen && viewingMerchant && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 sm:p-8 overflow-y-auto">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setIsViewModalOpen(false)}
+                            className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md"
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0, y: 50 }} 
+                            animate={{ scale: 1, opacity: 1, y: 0 }} 
+                            exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                            className="relative w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-[3rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden my-auto"
+                        >
+                            {/* Merchant Banner */}
+                            <div className="relative h-64 bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                                <img 
+                                    src={viewingMerchant.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5'} 
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                <div className="absolute bottom-8 left-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-20 h-20 bg-white dark:bg-zinc-900 rounded-3xl p-1 shadow-2xl">
+                                            <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 rounded-[1.25rem] flex items-center justify-center text-zinc-400">
+                                                <Store size={32} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-3xl font-black text-white uppercase tracking-tight leading-none mb-3">
+                                                {viewingMerchant.name}
+                                            </h2>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                                    viewingMerchant.is_active 
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20' 
+                                                        : 'bg-rose-500/20 text-rose-400 border-rose-500/20'
+                                                }`}>
+                                                    {viewingMerchant.is_active ? '● Active Partner' : '● Inactive'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
+                                </div>
+                                <button onClick={() => setIsViewModalOpen(false)} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-2xl text-white transition-all">
+                                    <XCircle size={28} />
+                                </button>
                             </div>
 
-                            <button
-                                onClick={() => handleToggleStatus(rest.id)}
-                                disabled={updatingId === rest.id}
-                                className={`w-full py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 border-2 ${
-                                    rest.is_active 
-                                    ? 'bg-transparent text-rose-500 border-rose-500/20 hover:bg-rose-500 hover:text-white' 
-                                    : 'bg-emerald-500 text-white border-transparent hover:bg-emerald-400'
-                                }`}
-                            >
-                                {updatingId === rest.id ? (
-                                    <Loader2 className="animate-spin" size={16} />
-                                ) : rest.is_active ? (
-                                    <>Deactivate</>
-                                ) : (
-                                    <>Activate</>
-                                )}
-                            </button>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+                            {/* Info Grid */}
+                            <div className="p-10 lg:p-12 grid grid-cols-1 md:grid-cols-3 gap-10">
+                                {/* Section 1: Core Logistics */}
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3 text-emerald-500">
+                                            <Info size={16} strokeWidth={3} />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Outlet Info</p>
+                                        </div>
+                                        <div className="space-y-6">
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-2.5 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-400"><MapPin size={18} /></div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Location</p>
+                                                    <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 leading-relaxed uppercase">
+                                                        {viewingMerchant.address} <br/>
+                                                        {viewingMerchant.city?.name}, {viewingMerchant.state?.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-2.5 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-400"><Clock size={18} /></div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Operating Hours</p>
+                                                    <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest font-mono">
+                                                        {viewingMerchant.opening_time?.slice(0,5)} - {viewingMerchant.closing_time?.slice(0,5)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 2: Owner / Contact */}
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3 text-blue-500">
+                                            <UserCircle size={16} strokeWidth={3} />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Owner Profiles</p>
+                                        </div>
+                                        <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 space-y-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-zinc-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-zinc-900 font-black text-sm uppercase">
+                                                    {viewingMerchant.merchant?.name?.[0]}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1.5 uppercase">{viewingMerchant.merchant?.name}</p>
+                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest w-fit">
+                                                        <ShieldCheck size={8} /> Verified Partner
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3 pt-2">
+                                                <div className="flex items-center gap-3 text-zinc-500">
+                                                    <Mail size={14} className="shrink-0" />
+                                                    <span className="text-[11px] font-bold truncate">{viewingMerchant.merchant?.email}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-zinc-500">
+                                                    <Phone size={14} className="shrink-0" />
+                                                    <span className="text-[11px] font-bold tracking-widest">{viewingMerchant.merchant?.phone || '+1 XXX XXX XXXX'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: Performance / Stats */}
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3 text-rose-500">
+                                            <Settings size={16} strokeWidth={3} />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Node Operations</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-5 bg-zinc-50 dark:bg-zinc-800/30 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
+                                                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 text-center">Status</p>
+                                                <p className={`text-[10px] font-black text-center uppercase tracking-widest ${viewingMerchant.is_open ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                    {viewingMerchant.is_open ? 'LIVE' : 'CLOSED'}
+                                                </p>
+                                            </div>
+                                            <div className="p-5 bg-zinc-50 dark:bg-zinc-800/30 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
+                                                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 text-center">Joined</p>
+                                                <p className="text-[10px] font-black text-zinc-900 dark:text-white text-center uppercase tracking-widest">
+                                                    {new Date(viewingMerchant.merchant?.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button className="w-full h-14 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                                            <Share2 size={16} /> Share Partner Node
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

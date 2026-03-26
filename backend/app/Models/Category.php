@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\HasRestaurantFilter;
+
 class Category extends Model
 {
-    use HasFactory;
+    use HasFactory, HasRestaurantFilter;
 
     protected $fillable = ['name', 'image', 'status', 'restaurant_id'];
 

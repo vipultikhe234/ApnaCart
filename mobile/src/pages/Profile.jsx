@@ -20,7 +20,7 @@ import {
     Monitor,
     Bell,
     Globe,
-    FileText
+    FileText,
 } from 'lucide-react';
 
 const Profile = () => {
@@ -319,6 +319,8 @@ const Profile = () => {
                                     </div>
                                 </div>
                             </div>
+
+
 
                             <button
                                 onClick={handleLogout}

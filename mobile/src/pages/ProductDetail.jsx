@@ -16,8 +16,10 @@ import {
     X,
     Heart,
     Share2,
-    ShieldCheck
+    ShieldCheck,
+    Utensils
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -145,6 +147,27 @@ const ProductDetail = () => {
                         );
                     })}
                 </div>
+
+                {/* Restaurant Info */}
+                {product.restaurant && (
+                    <div className="mb-8 p-4 bg-zinc-900 dark:bg-zinc-800 rounded-3xl text-white flex items-center justify-between shadow-lg">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-white/10 rounded-2xl overflow-hidden backdrop-blur-md flex items-center justify-center">
+                                <Utensils size={24} className="text-white" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold uppercase tracking-tight line-clamp-1">{product.restaurant.name}</h4>
+                                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Explore Full Menu</p>
+                            </div>
+                        </div>
+                        <Link 
+                            to={`/restaurant/${product.restaurant_id}`}
+                            className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white active:scale-90 transition-transform"
+                        >
+                            <ArrowRight size={18} />
+                        </Link>
+                    </div>
+                )}
 
                 {/* Description */}
                 <div className="mb-8">

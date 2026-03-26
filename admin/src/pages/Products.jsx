@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api, { restaurantService } from '../services/api';
+import { toast } from 'react-hot-toast';
 import {
     Plus,
     Search,
@@ -22,25 +23,22 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchRealFoodImage, generateAIDescription, generateProductNames } from '../utils/aiHelpers';
+import { useMerchant } from '../contexts/MerchantContext';
 
 const Products = () => {
+    const { selectedMerchantId, merchants: restaurants } = useMerchant();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
-    const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
-    const [selectedMerchant, setSelectedMerchant] = useState(localStorage.getItem('last_selected_merchant') || '');
-    const [showMerchantDropdown, setShowMerchantDropdown] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [imgLoading, setImgLoading] = useState(false);
     const [nameSuggestions, setNameSuggestions] = useState([]);
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
     const isMerchant = user.role === 'merchant' || user.role === 'Merchant';
-
-    const merchantRef = useRef(null);
 
     const initialProductState = {
         name: '',
@@ -62,59 +60,15 @@ const Products = () => {
         return `${import.meta.env.VITE_API_URL.replace('/api', '')}/storage/${path}`;
     };
 
-    // Initial Load - Fetch restaurants once
-    useEffect(() => {
-        fetchRestaurants();
-    }, []);
-
     // Scoped Load - Fetch data when merchant selection changes
     useEffect(() => {
-        if (selectedMerchant) {
-            fetchData();
-        }
-    }, [selectedMerchant]);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (merchantRef.current && !merchantRef.current.contains(event.target)) {
-                setShowMerchantDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const fetchRestaurants = async () => {
-        try {
-            let data = [];
-            if (isMerchant) {
-                const res = await restaurantService.getProfile();
-                data = res.data.data ? [res.data.data] : [];
-            } else {
-                const res = await restaurantService.listAll();
-                data = res.data.data || [];
-            }
-            
-            setRestaurants(data);
-            
-            if (isMerchant && data.length > 0) {
-                const myId = data[0].id;
-                setSelectedMerchant(myId);
-                localStorage.setItem('last_selected_merchant', myId);
-            } else if (!selectedMerchant && data.length > 0) {
-                const firstId = data[0].id;
-                setSelectedMerchant(firstId);
-                localStorage.setItem('last_selected_merchant', firstId);
-            }
-        } catch (error) {
-            console.error("Error fetching restaurant context:", error);
-        }
-    };
+        fetchData();
+    }, [selectedMerchantId]);
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const query = selectedMerchant !== 'all' ? `?restaurant_id=${selectedMerchant}` : '';
+            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
             const [prodRes, catRes] = await Promise.all([
                 api.get(`/products${query}`),
                 api.get(`/categories${query}`)
@@ -140,15 +94,16 @@ const Products = () => {
         try {
             const res = await api.post('/upload', formData);
             setNewProduct({ ...newProduct, image: res.data.path });
+            toast.success("Image uploaded successfully");
         } catch (error) {
-            alert("Upload failed");
+            toast.error("Upload failed");
         } finally {
             setUploading(false);
         }
     };
 
     const handleAIDesc = async () => {
-        if (!newProduct.name) return alert("Enter a name first");
+        if (!newProduct.name) return toast.error("Enter a name first");
         setUploading(true);
         try {
             const desc = await generateAIDescription(newProduct.name);
@@ -159,7 +114,7 @@ const Products = () => {
     };
 
     const handleAIGenImage = async () => {
-        if (!newProduct.name) return alert("Enter a name first");
+        if (!newProduct.name) return toast.error("Enter a name first");
         setImgLoading(true);
         try {
             const url = await fetchRealFoodImage(newProduct.name, true, newProduct.description);
@@ -173,17 +128,17 @@ const Products = () => {
 
     // SYNC NEW PRODUCT WITH SELECTED MERCHANT
     useEffect(() => {
-        if (showModal && !editingId && selectedMerchant) {
-            setNewProduct(prev => ({ ...prev, restaurant_id: selectedMerchant }));
+        if (showModal && !editingId && selectedMerchantId) {
+            setNewProduct(prev => ({ ...prev, restaurant_id: selectedMerchantId }));
         }
-    }, [showModal, selectedMerchant, editingId]);
+    }, [showModal, selectedMerchantId, editingId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             const payload = { ...newProduct };
-            if (selectedMerchant !== 'all' && !payload.restaurant_id) {
-                payload.restaurant_id = selectedMerchant;
+            if (selectedMerchantId && !payload.restaurant_id) {
+                payload.restaurant_id = selectedMerchantId;
             }
 
             if (editingId) {
@@ -194,8 +149,9 @@ const Products = () => {
             fetchData();
             setShowModal(false);
             setEditingId(null);
+            toast.success(editingId ? "Product updated successfully" : "Product added successfully");
         } catch (error) {
-            alert("Error saving product. Please ensure a merchant is selected.");
+            toast.error("Error saving product. Please ensure a merchant is selected.");
         }
     };
 
@@ -215,14 +171,16 @@ const Products = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Delete this product?")) {
-            try {
-                await api.delete(`/products/${id}`);
-                setProducts(products.filter(p => p.id !== id));
-            } catch (error) {
-                alert("Error deleting product");
-            }
-        }
+        toast(
+            (t) => (
+                <span style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                    Delete this product?
+                    <button onClick={async () => { toast.dismiss(t.id); try { await api.delete(`/products/${id}`); setProducts(products.filter(p => p.id !== id)); toast.success("Product deleted"); } catch { toast.error("Error deleting product"); }}} style={{background:'#ef4444',color:'#fff',border:'none',borderRadius:'8px',padding:'6px 14px',fontWeight:900,cursor:'pointer',fontSize:'10px',letterSpacing:'0.1em'}}>YES</button>
+                    <button onClick={() => toast.dismiss(t.id)} style={{background:'#27272a',color:'#fff',border:'none',borderRadius:'8px',padding:'6px 14px',fontWeight:900,cursor:'pointer',fontSize:'10px',letterSpacing:'0.1em'}}>NO</button>
+                </span>
+            ),
+            { duration: 6000 }
+        );
     };
 
     const filtered = (Array.isArray(products) ? products : []).filter(p => {
@@ -231,11 +189,6 @@ const Products = () => {
             p.category?.name?.toLowerCase().includes(searchQuery.toLowerCase());
         return matchCat && matchQuery;
     });
-
-    const getMerchantName = (id) => {
-        const merchant = restaurants.find(r => String(r.id) === String(id));
-        return merchant ? merchant.name : 'Select Merchant';
-    };
 
     if (loading && products.length === 0) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -253,55 +206,10 @@ const Products = () => {
                     <p className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-2">Inventory Management.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* CUSTOM MERCHANT SELECTOR */}
-                    <div className="relative" ref={merchantRef}>
-                        <button
-                            disabled={isMerchant}
-                            onClick={() => setShowMerchantDropdown(!showMerchantDropdown)}
-                            className={`bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl flex items-center gap-4 transition-all shadow-sm group ${isMerchant ? 'opacity-75 cursor-default' : 'hover:border-emerald-500/50 cursor-pointer'}`}
-                        >
-                            <Store size={16} className={selectedMerchant === 'all' ? 'text-zinc-400' : 'text-emerald-500'} />
-                            <div className="text-left pr-4">
-                                <p className="text-[8px] font-black uppercase text-zinc-500 leading-none mb-1">{isMerchant ? 'Authorized Node' : 'Filtering For'}</p>
-                                <p className="text-[10px] font-black uppercase text-zinc-900 dark:text-white leading-none">{getMerchantName(selectedMerchant)}</p>
-                            </div>
-                            {!isMerchant && <ChevronDown size={14} className={`text-zinc-400 transition-transform ${showMerchantDropdown ? 'rotate-180' : ''}`} />}
-                        </button>
-
-                        <AnimatePresence>
-                            {showMerchantDropdown && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    className="absolute right-0 mt-3 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[60] overflow-hidden p-2"
-                                >
-                                    <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-                                        {restaurants.map(r => (
-                                            <button
-                                                key={r.id}
-                                                onClick={() => { setSelectedMerchant(r.id); setShowMerchantDropdown(false); }}
-                                                className={`w-full p-4 rounded-2xl text-left flex items-center justify-between group transition-all mb-1 ${selectedMerchant === r.id ? 'bg-emerald-500 text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100'}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${selectedMerchant === r.id ? 'bg-white/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 group-hover:text-emerald-500'}`}>
-                                                        <Store size={14} />
-                                                    </div>
-                                                    <span className="text-[11px] font-black uppercase leading-none">{r.name}</span>
-                                                </div>
-                                                {selectedMerchant === r.id && <CheckCircle2 size={14} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
                     <button
                         onClick={() => {
                             setEditingId(null);
-                            setNewProduct({ ...initialProductState, restaurant_id: selectedMerchant !== 'all' ? selectedMerchant : '' });
+                            setNewProduct({ ...initialProductState, restaurant_id: selectedMerchantId || '' });
                             setShowModal(true);
                         }}
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-black transition-all shadow-xl shadow-emerald-500/20 text-[10px] uppercase tracking-[0.2em] outline-none"

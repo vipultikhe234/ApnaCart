@@ -88,13 +88,13 @@ const Registration = () => {
                     transition={{ duration: 0.6, ease: "easeOut" }}
                 >
                     <div className="w-16 h-16 bg-zinc-900 dark:bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                        <span className="text-white dark:text-zinc-900 text-2xl font-bold font-['Outfit'] tracking-tight">FH</span>
+                        <span className="text-white dark:text-zinc-900 text-2xl font-bold font-['Outfit'] tracking-tight">AC</span>
                     </div>
                     <h1 className="text-3xl font-bold text-zinc-900 dark:text-white font-['Outfit'] tracking-tight mb-2">
                         Create Account
                     </h1>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        Join FoodHub to continue.
+                        Join ApnaCart to continue.
                     </p>
                 </motion.div>
             </div>
@@ -241,7 +241,7 @@ const Registration = () => {
             <div className="mt-auto pb-8 text-center">
                  <p className="text-[10px] text-zinc-400 dark:text-zinc-600">
                     Your data is secure and encrypted. <br />
-                    Powered by FoodHub © 2026
+                    Powered by ApnaCart © 2026
                  </p>
             </div>
         </div>

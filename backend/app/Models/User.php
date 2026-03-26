@@ -13,11 +13,11 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    const ROLE_ADMIN = 'admin';
+    const ROLE_MERCHANT = 'merchant';
+    const ROLE_RIDER = 'rider';
+    const ROLE_CUSTOMER = 'customer';
+
     protected $fillable = [
         'name',
         'email',
@@ -27,6 +27,10 @@ class User extends Authenticatable
         'address',
         'latitude',
         'longitude',
+        'current_latitude',
+        'current_longitude',
+        'merchant_id',
+        'is_ready',
         'fcm_token'
     ];
 
@@ -65,11 +69,16 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === self::ROLE_ADMIN;
     }
 
     public function isMerchant(): bool
     {
-        return $this->role === 'merchant';
+        return $this->role === self::ROLE_MERCHANT;
+    }
+
+    public function isRider(): bool
+    {
+        return $this->role === self::ROLE_RIDER;
     }
 }

@@ -20,20 +20,20 @@ import {
     ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
+
+import { useMerchant } from '../contexts/MerchantContext';
 
 const Categories = () => {
+    const { selectedMerchantId, merchants: restaurants } = useMerchant();
     const [categories, setCategories] = useState([]);
-    const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [imgLoading, setImgLoading] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedMerchant, setSelectedMerchant] = useState('');
-    const [showMerchantDropdown, setShowMerchantDropdown] = useState(false);
     const debounceRef = useRef(null);
-    const merchantRef = useRef(null);
 
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
     const isMerchant = user.role === 'merchant' || user.role === 'Merchant';
@@ -44,54 +44,19 @@ const Categories = () => {
 
     // SYNC NEW CATEGORY WITH SELECTED MERCHANT
     useEffect(() => {
-        if (showModal && !editingId && selectedMerchant) {
-            setNewCategory(prev => ({ ...prev, restaurant_id: selectedMerchant }));
+        if (showModal && !editingId && selectedMerchantId) {
+            setNewCategory(prev => ({ ...prev, restaurant_id: selectedMerchantId }));
         }
-    }, [showModal, selectedMerchant, editingId]);
+    }, [showModal, selectedMerchantId, editingId]);
 
     useEffect(() => { 
         fetchData(); 
-        fetchRestaurants();
-    }, [selectedMerchant]);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (merchantRef.current && !merchantRef.current.contains(event.target)) {
-                setShowMerchantDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const fetchRestaurants = async () => {
-        try {
-            let data = [];
-            if (isMerchant) {
-                const res = await restaurantService.getProfile();
-                data = res.data.data ? [res.data.data] : [];
-            } else {
-                const res = await restaurantService.listAll();
-                data = res.data.data || [];
-            }
-            
-            setRestaurants(data);
-            
-            if (isMerchant && data.length > 0) {
-                const myId = data[0].id;
-                setSelectedMerchant(myId);
-            } else if (!selectedMerchant && data.length > 0) {
-                setSelectedMerchant(data[0].id);
-            }
-        } catch (error) {
-            console.error("Error fetching restaurant context:", error);
-        }
-    };
+    }, [selectedMerchantId]);
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const query = selectedMerchant !== 'all' ? `?restaurant_id=${selectedMerchant}` : '';
+            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
             const res = await api.get(`/categories${query}`);
             const data = res.data.data || res.data || [];
             setCategories(Array.isArray(data) ? data : []);
@@ -144,8 +109,9 @@ const Categories = () => {
                 image: path,
                 image_url: `${baseUrl}/storage/${path}`,
             }));
+            toast.success('Image uploaded');
         } catch {
-            alert('Upload failed.');
+            toast.error('Upload failed.');
         } finally {
             setUploading(false);
         }
@@ -166,7 +132,7 @@ const Categories = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newCategory.name.trim()) return alert('Category name required');
+        if (!newCategory.name.trim()) return toast.error('Category name required');
         try {
             const payload = { 
                 name: newCategory.name, 
@@ -175,8 +141,8 @@ const Categories = () => {
                 restaurant_id: newCategory.restaurant_id
             };
             
-            if (selectedMerchant !== 'all' && !payload.restaurant_id) {
-                payload.restaurant_id = selectedMerchant;
+            if (selectedMerchantId && !payload.restaurant_id) {
+                payload.restaurant_id = selectedMerchantId;
             }
 
             if (editingId) await api.put(`/categories/${editingId}`, payload);
@@ -186,18 +152,23 @@ const Categories = () => {
             setEditingId(null);
             fetchData();
             setNewCategory({ name: '', image: '', image_url: '', status: true, restaurant_id: '' });
+            toast.success(editingId ? "Category updated successfully" : "Category created successfully");
         } catch (err) {
-            alert(`Error saving category.`);
+            toast.error(`Error saving category.`);
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Delete category?')) {
-            try {
-                await api.delete(`/categories/${id}`);
-                setCategories(prev => prev.filter(c => c.id !== id));
-            } catch { alert('Error deleting category'); }
-        }
+        toast(
+            (t) => (
+                <span style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                    Delete this category?
+                    <button onClick={async () => { toast.dismiss(t.id); try { await api.delete(`/categories/${id}`); setCategories(prev => prev.filter(c => c.id !== id)); toast.success('Category deleted'); } catch { toast.error('Error deleting category'); }}} style={{background:'#ef4444',color:'#fff',border:'none',borderRadius:'8px',padding:'6px 14px',fontWeight:900,cursor:'pointer',fontSize:'10px',letterSpacing:'0.1em'}}>YES</button>
+                    <button onClick={() => toast.dismiss(t.id)} style={{background:'#27272a',color:'#fff',border:'none',borderRadius:'8px',padding:'6px 14px',fontWeight:900,cursor:'pointer',fontSize:'10px',letterSpacing:'0.1em'}}>NO</button>
+                </span>
+            ),
+            { duration: 6000 }
+        );
     };
 
     const resetModal = () => {
@@ -209,7 +180,7 @@ const Categories = () => {
     };
 
     const getMerchantName = (id) => {
-        const merchant = restaurants.find(r => String(r.id) === String(id));
+        const merchant = restaurants?.find(r => String(r.id) === String(id));
         return merchant ? merchant.name : 'Select Merchant';
     };
 
@@ -231,55 +202,10 @@ const Categories = () => {
                     <p className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-2">Manage all item groupings.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* MERCHANT INDICATOR */}
-                    <div className="relative" ref={merchantRef}>
-                        <button
-                            disabled={isMerchant}
-                            onClick={() => setShowMerchantDropdown(!showMerchantDropdown)}
-                            className={`bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl flex items-center gap-4 transition-all shadow-sm group ${isMerchant ? 'opacity-75 cursor-default' : 'hover:border-emerald-500/50 cursor-pointer'}`}
-                        >
-                            <Store size={16} className={selectedMerchant === 'all' ? 'text-zinc-400' : 'text-emerald-500'} />
-                            <div className="text-left pr-4">
-                                <p className="text-[8px] font-black uppercase text-zinc-500 leading-none mb-1">{isMerchant ? 'Authorized Node' : 'Filtering For'}</p>
-                                <p className="text-[10px] font-black uppercase text-zinc-900 dark:text-white leading-none">{getMerchantName(selectedMerchant)}</p>
-                            </div>
-                            {!isMerchant && <ChevronDown size={14} className={`text-zinc-400 transition-transform ${showMerchantDropdown ? 'rotate-180' : ''}`} />}
-                        </button>
-
-                        <AnimatePresence>
-                            {showMerchantDropdown && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    className="absolute right-0 mt-3 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[60] overflow-hidden p-2"
-                                >
-                                    <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-                                        {restaurants.map(r => (
-                                            <button
-                                                key={r.id}
-                                                onClick={() => { setSelectedMerchant(r.id); setShowMerchantDropdown(false); }}
-                                                className={`w-full p-4 rounded-2xl text-left flex items-center justify-between group transition-all mb-1 ${selectedMerchant === r.id ? 'bg-emerald-500 text-white' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100'}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${selectedMerchant === r.id ? 'bg-white/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 group-hover:text-emerald-500'}`}>
-                                                        <Store size={14} />
-                                                    </div>
-                                                    <span className="text-[11px] font-black uppercase leading-none">{r.name}</span>
-                                                </div>
-                                                {selectedMerchant === r.id && <CheckCircle2 size={14} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
                     <button
                         onClick={() => {
                             setEditingId(null);
-                            setNewCategory({ name: '', image: '', image_url: '', status: true, restaurant_id: selectedMerchant !== 'all' ? selectedMerchant : '' });
+                            setNewCategory({ name: '', image: '', image_url: '', status: true, restaurant_id: selectedMerchantId || '' });
                             setShowModal(true);
                         }}
                         className="bg-emerald-500 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-black transition-all shadow-xl shadow-emerald-500/20 text-[10px] uppercase tracking-[0.2em] outline-none"

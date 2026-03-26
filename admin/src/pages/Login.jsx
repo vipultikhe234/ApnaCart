@@ -108,7 +108,7 @@ const Login = () => {
                      <div className="w-16 h-16 bg-zinc-900 dark:bg-white rounded-2xl flex items-center justify-center shadow-xl">
                          <span className="text-white dark:text-zinc-900 text-2xl font-black font-['Outfit'] tracking-tighter">FH</span>
                      </div>
-                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white font-['Outfit'] tracking-tight">FoodHub</h2>
+                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white font-['Outfit'] tracking-tight">ApnaCart</h2>
                 </div>
 
                 <div className="w-full max-w-[420px]">
@@ -152,7 +152,7 @@ const Login = () => {
                                     <input
                                         type="email"
                                         required
-                                        placeholder="your@foodhub.com"
+                                        placeholder="your@apnacart.com"
                                         className="w-full h-16 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl px-6 text-sm text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-white transition-all placeholder:text-zinc-400 font-bold"
                                         value={credentials.email}
                                         onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
@@ -216,7 +216,7 @@ const Login = () => {
 
                 {/* Micro Footer Only visible on Mobile Section */}
                 <div className="absolute bottom-10 left-1/2 -translate-x-1/2 lg:left-12 lg:translate-x-0">
-                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-[0.5em] whitespace-nowrap">FoodHub Nexus Ecosystem • 2026</p>
+                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-[0.5em] whitespace-nowrap">ApnaCart Nexus Ecosystem • 2026</p>
                 </div>
             </div>
         </div>

@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Collection;
 
 class CategoryRepository
 {
-    public function getAll(): Collection
+    public function getAll($restaurantId = null): Collection
     {
-        return Category::all();
+        return Category::byRestaurant($restaurantId)->latest()->get();
     }
 
     public function findById(int $id): ?Category

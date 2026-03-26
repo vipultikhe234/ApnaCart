@@ -1,6 +1,6 @@
 {
-  "appId": "com.foodHub.app",
-  "appName": "FoodHub",
+  "appId": "com.apnacart.app",
+  "appName": "ApnaCart",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

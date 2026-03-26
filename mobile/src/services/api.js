@@ -141,5 +141,23 @@ export const fcmService = {
     getStatus: () => api.get('/fcm-status'),
     sendManualNotification: (data) => api.post('/send-notification', data),
 };
+ 
+// ── Location Service ───────────────────────────────────────────────────────
+export const locationService = {
+    getCountries: () => cachedGet('/locations/countries', 24 * 60 * 60 * 1000), // 24h
+    getStates: (countryId) => cachedGet(`/locations/states?country_id=${countryId}`, 24 * 60 * 60 * 1000),
+    getCities: (stateId) => {
+        const url = stateId ? `/locations/cities?state_id=${stateId}` : '/locations/cities';
+        return cachedGet(url, 24 * 60 * 60 * 1000);
+    },
+};
+
+// ── Rider Service ──────────────────────────────────────────────────────────
+export const riderService = {
+    getAvailableOrders: () => api.get('/rider/orders/available'),
+    acceptOrder: (id) => api.post(`/rider/orders/${id}/accept`),
+    updateLocation: (lat, lng) => api.post('/rider/location', { lat, lng }),
+    completeOrder: (id) => api.post(`/rider/orders/${id}/complete`),
+};
 
 export default api;

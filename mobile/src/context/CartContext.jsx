@@ -20,6 +20,14 @@ export const CartProvider = ({ children }) => {
 
     const addToCart = (product, quantity = 1) => {
         setCartItems(prev => {
+            // Check if cart is not empty and the new product is from a different restaurant
+            if (prev.length > 0 && prev[0].restaurant_id !== product.restaurant_id) {
+                const confirmed = window.confirm("Your cart contains products from another restaurant. Do you want to clear your cart and add this instead?");
+                if (!confirmed) return prev;
+                // If confirmed, treat the cart as empty for this operation
+                return [{ ...product, quantity }];
+            }
+
             const existing = prev.find(item => item.id === product.id);
             if (existing) {
                 return prev.map(item =>

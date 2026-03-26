@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\HasRestaurantFilter;
+
 class Coupon extends Model
 {
-    use HasFactory;
+    use HasFactory, HasRestaurantFilter;
 
     protected $fillable = [
         'code',

@@ -15,13 +15,15 @@ class RestaurantSeeder extends Seeder
     public function run(): void
     {
         // 1. Create a Merchant User
-        $merchant = User::create([
-            'name' => 'John Merchant',
-            'email' => 'merchant@test.com',
-            'password' => Hash::make('password'),
-            'role' => 'merchant',
-            'phone' => '1234567890'
-        ]);
+        $merchant = User::updateOrCreate(
+            ['email' => 'merchant@apnacart.com'],
+            [
+                'name' => 'John Merchant',
+                'password' => Hash::make('password123'),
+                'role' => 'merchant',
+                'phone' => '1234567890'
+            ]
+        );
 
         // 2. Create a Restaurant for that merchant
         Restaurant::create([
