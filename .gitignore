@@ -34,3 +34,6 @@ backend/.phpunit.cache/
 .DS_Store
 Thumbs.db
 *.log
+
+# Project Management
+/requirements/

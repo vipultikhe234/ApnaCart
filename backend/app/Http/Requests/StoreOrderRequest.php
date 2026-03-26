@@ -22,12 +22,14 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'restaurant_id'    => 'required|exists:restaurants,id',
             'delivery_address' => 'required|string',
             'payment_method'   => 'required|in:cod,stripe,razorpay',
             'items'            => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity'   => 'required|integer|min:1',
-            'items.*.price'      => 'required|numeric',
+            'items.*.unit_price' => 'required|numeric',
+            'idempotency_key'  => 'nullable|string',
         ];
     }
 }

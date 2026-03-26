@@ -11,7 +11,8 @@ use App\Http\Requests\StoreOrderRequest;
 class OrderController extends Controller
 {
     public function __construct(
-        protected OrderService $service
+        protected OrderService $service,
+        protected \App\Services\Operations\CheckoutService $checkoutService
     ) {}
 
     /**
@@ -21,17 +22,31 @@ class OrderController extends Controller
     {
         try {
             $data = $request->all();
-            $data['user_id'] = $request->user()->id;
+            
+            // ACP Path: Atomic Checkout Process
+            $order = $this->checkoutService->process($data, $request->user());
 
-            $result = $this->service->placeOrder($data, $request->items);
+            // If Stripe selected, resolve payment intent
+            if ($data['payment_method'] === 'stripe') {
+                $intent = $this->service->initiatePayment($order->id);
+                return response()->json([
+                    'message' => 'Order placed. Finalizing payment...',
+                    'data'    => [
+                        'order' => $order->load(['items', 'payment']),
+                        'stripe_client_secret' => $intent['client_secret']
+                    ]
+                ], 201);
+            }
 
             return response()->json([
                 'message' => 'Order placed successfully',
-                'data'    => $result
+                'data'    => [
+                    'order' => $order->load(['items', 'payment'])
+                ]
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to place order: ' . $e->getMessage()
+                'message' => 'Verification failed: ' . $e->getMessage()
             ], 400);
         }
     }

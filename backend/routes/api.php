@@ -23,6 +23,8 @@ use App\Http\Controllers\Analytics\DashboardController;
 
 use App\Http\Controllers\Management\RestaurantController;
 use App\Http\Controllers\Management\LocationController;
+use App\Http\Controllers\Api\OfferController;
+use App\Http\Controllers\Api\AIController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,11 +37,14 @@ Route::get('/ping', function() { return response()->json(['status' => 'ok']); })
 // 0. Public Gateway (Non-Authenticated)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/products/curated', [ProductController::class, 'curated']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 Route::get('/restaurants/{id}', [RestaurantController::class, 'showPublic']);
+Route::get('/live-offers', [OfferController::class, 'index']);
+Route::post('/live-offers/{id}/click', [OfferController::class, 'recordClick']);
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 
 // Public location endpoints (for cascading dropdowns in registration / profile)
@@ -83,12 +88,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/coupons/{id}', [CouponController::class, 'update']);
     Route::delete('/coupons/{id}', [CouponController::class, 'destroy']);
     Route::post('/coupons/validate', [CouponController::class, 'validateCoupon']);
+    
+    Route::get('/offers', [OfferController::class, 'listAll']);
+    Route::post('/offers', [OfferController::class, 'store']);
+    Route::put('/offers/{id}', [OfferController::class, 'update']);
+    Route::delete('/offers/{id}', [OfferController::class, 'destroy']);
+
 
     // --- Performance Analytics ---
     Route::get('/stats', [DashboardController::class, 'stats']);
 
     // --- Admin Control Plane ---
     Route::middleware('admin')->group(function () {
+        Route::post('/admin/generate-offer-image', [AIController::class, 'generateOfferImage']);
         Route::get('/admin/restaurants', [RestaurantController::class, 'listAll']);
         Route::post('/admin/merchants', [RestaurantController::class, 'store']);
         Route::put('/admin/merchants/{id}', [RestaurantController::class, 'adminUpdate']);

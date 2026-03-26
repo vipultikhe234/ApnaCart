@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
+import LiveOffersSection from '../components/LiveOffersSection';
 
 const Home = () => {
     const navigate = useNavigate();
@@ -27,6 +28,7 @@ const Home = () => {
     const [selectedCity, setSelectedCity] = useState(null); // {id, name}
     const [showCityModal, setShowCityModal] = useState(false);
     const [popularProducts, setPopularProducts] = useState([]);
+    const [curatedProducts, setCuratedProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('All');
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -38,16 +40,18 @@ const Home = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [catRes, prodRes, restRes, cityRes] = await Promise.all([
-                    productService.getCategories(),
+                const [catRes, prodRes, restRes, cityRes, curatedRes] = await Promise.all([
+                    productService.getCategories({ unique: 1 }),
                     productService.getAll(),
                     restaurantService.getAll(),
-                    locationService.getCities()
+                    locationService.getCities(),
+                    productService.getCurated()
                 ]);
                 setCategories(catRes.data.data || []);
                 setPopularProducts(prodRes.data.data || []);
                 setRestaurants(restRes.data.data || []);
                 setAllCities(cityRes.data || []);
+                setCuratedProducts(curatedRes.data.data || []);
             } catch (error) {
                 console.error("Error fetching mobile home data:", error);
             } finally {
@@ -127,18 +131,8 @@ const Home = () => {
                 </div>
             </motion.div>
 
-            {/* Premium Minimal Banner */}
-            <motion.div initial="hidden" animate="visible" variants={fadeUp} className="px-6 mb-10">
-                <div className="bg-zinc-900 dark:bg-zinc-800 rounded-3xl p-6 text-white relative overflow-hidden flex flex-col justify-center h-44 shadow-md">
-                    <div className="relative z-10 w-2/3">
-                        <span className="text-[10px] font-semibold px-2.5 py-1 bg-white/10 rounded-full uppercase tracking-wider mb-3 inline-block">Exclusive Offer</span>
-                        <h3 className="text-2xl font-semibold leading-tight mb-1">Free delivery</h3>
-                        <p className="text-zinc-400 text-xs font-medium">On your first 3 orders.</p>
-                    </div>
-                    {/* Decorative minimalist graphic */}
-                    <div className="absolute right-[-20%] bottom-[-20%] w-48 h-48 border-[1rem] border-white/5 rounded-full" />
-                </div>
-            </motion.div>
+            {/* Live Offers Section (MNC Style) */}
+            <LiveOffersSection />
 
             {/* Simple Categories */}
             <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-10">
@@ -179,8 +173,8 @@ const Home = () => {
             <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-10">
                 <div className="px-6 flex justify-between items-baseline mb-5">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Top Restaurants</h2>
-                    <Link to="/search" className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                        Show More <ChevronDown size={12} />
+                    <Link to="/all-merchants" className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 active:scale-95 transition-transform group">
+                        Explore All <ChevronDown size={12} className="-rotate-90 group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                 </div>
                 <div className="flex gap-4 overflow-x-auto px-6 no-scrollbar pb-4">
@@ -224,9 +218,123 @@ const Home = () => {
                 </div>
             </motion.div>
 
-            {/* Minimalist Product Grid */}
+            {/* Curated Discovery (Top Deals & Best Sellers) */}
             <div className="px-6 mb-10">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-5">Popular Now</h2>
+                <div className="flex justify-between items-baseline mb-5">
+                    <h2 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight italic">Top Discoveries</h2>
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border border-emerald-500/20 px-2 py-1 rounded-md">Priority Picks</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-8">
+                    <AnimatePresence mode="popLayout">
+                        {curatedProducts
+                            .filter(p => !selectedCity || p.restaurant?.city_id === selectedCity.id)
+                            .map((p, idx) => (
+                            <motion.div
+                                key={`curated-${p.id}`}
+                                layout
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ delay: idx * 0.05 }}
+                            >
+                                <Link to={`/product/${p.id}`} className="block group">
+                                    <div className="aspect-square bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl overflow-hidden mb-3 relative">
+                                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        
+                                        {/* Floating Badges */}
+                                        <div className="absolute top-3 inset-x-3 flex justify-between items-start pointer-events-none">
+                                            <div className="flex flex-col gap-1.5">
+                                                {p.discount_percentage > 0 && (
+                                                    <div className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-lg uppercase tracking-tighter animate-bounce-subtle">
+                                                        -{p.discount_percentage}% OFF
+                                                    </div>
+                                                )}
+                                                {p.is_best_seller && (
+                                                    <div className="bg-zinc-900/90 dark:bg-white/90 backdrop-blur-md text-white dark:text-zinc-900 text-[8px] font-black px-2 py-0.5 rounded-md shadow-sm uppercase tracking-widest border border-white/20 dark:border-black/10">
+                                                        Best Seller
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm px-1.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                                                <Star size={8} className="text-yellow-500 fill-yellow-500" />
+                                                <span className="text-[9px] font-bold text-zinc-900 dark:text-white">{p.avg_rating}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="px-1">
+                                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white truncate mb-0.5">{p.name}</h4>
+                                        <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-medium mb-3">
+                                            <span>{p.category?.name || 'Exclusive'}</span>
+                                            <span className="w-1 h-1 bg-zinc-300 rounded-full"></span>
+                                            <span className="flex items-center gap-0.5 uppercase font-bold tracking-tighter text-[8px]">{p.restaurant?.name}</span>
+                                        </div>
+                                        
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-base font-black text-zinc-900 dark:text-white leading-none">
+                                                    ₹{p.has_variants ? p.starting_price : (p.discount_price || p.price)}
+                                                </span>
+                                                {(p.discount_price > 0 || p.has_variants) && (
+                                                    <span className="text-[10px] text-zinc-400 font-bold line-through mt-0.5 opacity-60">
+                                                        ₹{p.price}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            
+                                            {(() => {
+                                                const cartItem = cartItems.find(item => item.id === p.id);
+                                                if (cartItem) {
+                                                    return (
+                                                        <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-full p-1 border border-zinc-200 dark:border-zinc-700" onClick={(e) => e.preventDefault()}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    updateQuantity(p.id, cartItem.quantity - 1);
+                                                                }}
+                                                                className="w-6 h-6 rounded-full bg-white dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+                                                            >
+                                                                <Minus size={12} strokeWidth={2.5} />
+                                                            </button>
+                                                            <span className="text-xs font-semibold text-zinc-900 dark:text-white px-2.5">
+                                                                {cartItem.quantity}
+                                                            </span>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    updateQuantity(p.id, cartItem.quantity + 1);
+                                                                }}
+                                                                className="w-6 h-6 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+                                                            >
+                                                                <Plus size={12} strokeWidth={2.5} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            addToCart(p);
+                                                        }}
+                                                        className="w-8 h-8 bg-zinc-950 dark:bg-white hover:opacity-90 rounded-full flex items-center justify-center text-white dark:text-zinc-950 transition-all active:scale-90 shadow-md"
+                                                    >
+                                                        <Plus size={16} strokeWidth={2.5} />
+                                                    </button>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </Link>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+            </div>
+
+            {/* Popular Now (Original list but sorted by category) */}
+            <div className="px-6 mb-10">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-5 uppercase tracking-tight">Browse More</h2>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-8">
                     <AnimatePresence mode="popLayout">
                         {filteredProducts

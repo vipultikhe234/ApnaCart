@@ -12,14 +12,16 @@ import {
     SearchX,
     AlertCircle,
     ChevronRight,
-    Sparkles,
-    CheckCircle2,
+    ChevronDown,
+    ArrowRight,
+    Layers,
+    Type,
+    Tag,
+    Archive,
     Box,
     Loader2,
-    Store,
-    Filter,
-    ChevronDown,
-    ArrowRight
+    Sparkles,
+    Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchRealFoodImage, generateAIDescription, generateProductNames } from '../utils/aiHelpers';
@@ -48,7 +50,9 @@ const Products = () => {
         restaurant_id: '',
         stock: 0,
         image: null,
-        is_available: true
+        is_available: true,
+        has_variants: false,
+        variants: [] // { name, quantity, price, stock }
     };
 
     const [newProduct, setNewProduct] = useState(initialProductState);
@@ -141,6 +145,11 @@ const Products = () => {
                 payload.restaurant_id = selectedMerchantId;
             }
 
+            // Validation: For variable products, ensure at least one variant exists
+            if (payload.has_variants && payload.variants.length === 0) {
+                return toast.error("Please add at least one variant for this product.");
+            }
+
             if (editingId) {
                 await api.put(`/products/${editingId}`, payload);
             } else {
@@ -151,8 +160,28 @@ const Products = () => {
             setEditingId(null);
             toast.success(editingId ? "Product updated successfully" : "Product added successfully");
         } catch (error) {
-            toast.error("Error saving product. Please ensure a merchant is selected.");
+            toast.error("Error saving product. Please ensure all fields are correct.");
         }
+    };
+
+    const handleAddVariant = () => {
+        setNewProduct(prev => ({
+            ...prev,
+            variants: [...prev.variants, { name: '', quantity: '', price: '', stock: 0 }]
+        }));
+    };
+
+    const handleUpdateVariant = (index, field, value) => {
+        const updatedVariants = [...newProduct.variants];
+        updatedVariants[index] = { ...updatedVariants[index], [field]: value };
+        setNewProduct({ ...newProduct, variants: updatedVariants });
+    };
+
+    const handleRemoveVariant = (index) => {
+        setNewProduct(prev => ({
+            ...prev,
+            variants: prev.variants.filter((_, i) => i !== index)
+        }));
     };
 
     const handleEdit = (prod) => {
@@ -163,9 +192,11 @@ const Products = () => {
             price: prod.price,
             category_id: prod.category?.id || prod.category_id,
             restaurant_id: prod.restaurant_id || '',
-            stock: prod.stock,
+            stock: prod.stock || 0,
             image: prod.image,
-            is_available: !!prod.is_available
+            is_available: !!prod.is_available,
+            has_variants: !!prod.has_variants,
+            variants: prod.variants || []
         });
         setShowModal(true);
     };
@@ -317,9 +348,19 @@ const Products = () => {
                                             <span className="font-black text-zinc-900 dark:text-white tracking-tighter text-lg">₹{parseFloat(prod.price || 0).toFixed(0)}</span>
                                         </td>
                                         <td className="py-5 px-4 text-center">
-                                            <span className={`font-black text-[11px] uppercase tracking-wider ${prod.stock < 10 ? 'text-rose-500' : 'text-zinc-800 dark:text-zinc-200'}`}>
-                                                {prod.stock} Units
-                                            </span>
+                                            <div className="flex flex-col items-center">
+                                                <span className={`font-black text-[11px] uppercase tracking-wider ${prod.stock < 10 ? 'text-rose-500' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                                                    {prod.has_variants 
+                                                        ? (prod.variants?.reduce((acc, v) => acc + parseInt(v.stock || 0), 0) || 0)
+                                                        : prod.stock
+                                                    } Units
+                                                </span>
+                                                {prod.has_variants && (
+                                                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.1em] mt-1 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                                        {prod.variants?.length || 0} Variants
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="py-5 px-4">
                                             <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] border-2 ${
@@ -477,58 +518,128 @@ const Products = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Menu Group</label>
-                                        <div className="relative">
-                                            <select
-                                                required
-                                                className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer"
-                                                value={newProduct.category_id}
-                                                onChange={(e) => setNewProduct({ ...newProduct, category_id: e.target.value })}
-                                            >
-                                                <option value="" className="dark:bg-zinc-900">Select Group</option>
-                                                {categories.map(cat => <option key={cat.id} value={cat.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{cat.name}</option>)}
-                                            </select>
-                                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                                <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <label className="text-[10px] font-black text-zinc-900 dark:text-white uppercase tracking-[0.1em]">Variable Product</label>
+                                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Allow multiple sizes/quantities.</p>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewProduct({ ...newProduct, has_variants: !newProduct.has_variants })}
+                                            className={`w-12 h-6 rounded-full relative transition-all ${newProduct.has_variants ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-zinc-200 dark:bg-zinc-800'}`}
+                                        >
+                                            <motion.div 
+                                                animate={{ x: newProduct.has_variants ? 26 : 4 }} 
+                                                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm" 
+                                            />
+                                        </button>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Base Price (₹)</label>
-                                        <input
-                                            required
-                                            type="number"
-                                            className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
-                                            value={newProduct.price}
-                                            onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Inventory Level</label>
-                                        <input
-                                            required
-                                            type="number"
-                                            className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
-                                            value={newProduct.stock}
-                                            onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Visibility</label>
-                                        <div className="flex items-center justify-between h-11 px-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl border-2 border-zinc-100 dark:border-zinc-800">
-                                            <span className="text-[9px] font-black uppercase text-zinc-500">{newProduct.is_available ? 'Live' : 'Hidden'}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setNewProduct({ ...newProduct, is_available: !newProduct.is_available })}
-                                                className={`w-10 h-5 rounded-full relative transition-all ${newProduct.is_available ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                                            >
-                                                <motion.div animate={{ x: newProduct.is_available ? 20 : 4 }} className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm" />
-                                            </button>
+                                    {!newProduct.has_variants ? (
+                                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Base Price (₹)</label>
+                                                <input
+                                                    required={!newProduct.has_variants}
+                                                    type="number"
+                                                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
+                                                    value={newProduct.price}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Inventory Level</label>
+                                                <input
+                                                    required={!newProduct.has_variants}
+                                                    type="number"
+                                                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
+                                                    value={newProduct.stock}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Variants Config</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddVariant}
+                                                    className="flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest hover:text-emerald-600 transition-all"
+                                                >
+                                                    <Plus size={10} strokeWidth={4} /> Add Scale/Unit
+                                                </button>
+                                            </div>
+
+                                            {newProduct.variants.length === 0 ? (
+                                                <div className="py-8 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-[2rem] flex flex-col items-center justify-center opacity-40">
+                                                    <Layers size={24} className="text-zinc-300" />
+                                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] mt-3">No Variants Defined</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {newProduct.variants.map((v, idx) => (
+                                                        <motion.div 
+                                                            layout
+                                                            initial={{ opacity: 0, x: -10 }}
+                                                            animate={{ opacity: 1, x: 0 }}
+                                                            key={idx} 
+                                                            className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 relative group/v"
+                                                        >
+                                                            <div className="grid grid-cols-[1fr_100px_80px] gap-3">
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center gap-1.5 opacity-60">
+                                                                        <Archive size={10} />
+                                                                        <span className="text-[8px] font-black uppercase tracking-widest">Scale/Unit</span>
+                                                                    </div>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="e.g. 500g"
+                                                                        className="w-full h-9 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-[10px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                                                                        value={v.quantity}
+                                                                        onChange={(e) => handleUpdateVariant(idx, 'quantity', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center gap-1.5 opacity-60">
+                                                                        <Tag size={10} />
+                                                                        <span className="text-[8px] font-black uppercase tracking-widest">Price</span>
+                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="₹"
+                                                                        className="w-full h-9 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-[10px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                                                                        value={v.price}
+                                                                        onChange={(e) => handleUpdateVariant(idx, 'price', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center gap-1.5 opacity-60">
+                                                                        <Box size={10} />
+                                                                        <span className="text-[8px] font-black uppercase tracking-widest">Stock</span>
+                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full h-9 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-[10px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500"
+                                                                        value={v.stock}
+                                                                        onChange={(e) => handleUpdateVariant(idx, 'stock', parseInt(e.target.value) || 0)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveVariant(idx)}
+                                                                className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/v:opacity-100 transition-all shadow-lg hover:bg-rose-600 scale-90 group-hover/v:scale-100"
+                                                            >
+                                                                <X size={12} strokeWidth={3} />
+                                                            </button>
+                                                        </motion.div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

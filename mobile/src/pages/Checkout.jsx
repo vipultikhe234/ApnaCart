@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { couponService, orderService, addressService } from '../services/api';
+import { couponService, orderService, addressService, restaurantService } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePayment from '../components/StripePayment';
@@ -42,10 +42,42 @@ const Checkout = () => {
     const [newAddress, setNewAddress] = useState('');
     const [isAddingAddress, setIsAddingAddress] = useState(false);
 
-    const deliveryFee = orderType === 'delivery' ? 30.00 : 0.00;
-    const taxes = (Number(subtotal) || 0) * 0.05;
+    const [charges, setCharges] = useState({
+        delivery_charge: 0,
+        packaging_charge: 0,
+        platform_fee: 0,
+        delivery_charge_tax: 0,
+        packaging_charge_tax: 0,
+        platform_fee_tax: 0,
+        delivery_charge_type: 'fixed',
+        delivery_charge_per_km: 0,
+        max_delivery_distance: 0
+    });
+    const [merchantLocation, setMerchantLocation] = useState(null);
+    const [userLoc, setUserLoc] = useState(null);
+    const [distanceKm, setDistanceKm] = useState(0);
+
+    // Derived Financials
+    const baseDelivery = charges.delivery_charge_type === 'distance' 
+        ? (distanceKm * (Number(charges.delivery_charge_per_km) || 0))
+        : (Number(charges.delivery_charge) || 0);
+
+    const currentDeliveryFee = orderType === 'delivery' ? baseDelivery : 0;
+    const currentPackagingCharge = (Number(charges.packaging_charge) || 0);
+    const currentPlatformFee = (Number(charges.platform_fee) || 0);
+
+    const deliveryTax = currentDeliveryFee * ((Number(charges.delivery_charge_tax) || 0) / 100);
+    const packagingTax = currentPackagingCharge * ((Number(charges.packaging_charge_tax) || 0) / 100);
+    const platformTax = currentPlatformFee * ((Number(charges.platform_fee_tax) || 0) / 100);
+
+    const totalMerchantFees = currentDeliveryFee + currentPackagingCharge + currentPlatformFee;
+    const totalMerchantTaxes = deliveryTax + packagingTax + platformTax;
+    
+    // Food Tax (fallback 5% if not specified, or just keeping it simple)
+    const foodTax = (Number(subtotal) || 0) * 0.05; 
+
     const finalSubtotal = (Number(subtotal) || 0) - couponDiscount;
-    const total = finalSubtotal + deliveryFee + taxes;
+    const total = finalSubtotal + totalMerchantFees + totalMerchantTaxes + foodTax;
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
@@ -76,8 +108,68 @@ const Checkout = () => {
                 console.error("Failed to fetch user addresses:", err);
             }
         };
-        fetchAddresses();
-    }, [navigate]);
+
+        const fetchUserData = async () => {
+            // Get user location for distance calc
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                    (err) => console.log('Geolocation unavailable')
+                );
+            }
+
+            const fetchAddresses = async () => {
+                try {
+                    const response = await addressService.getAddresses();
+                    if (response.data.data && response.data.data.length > 0) {
+                        setAddresses(response.data.data);
+                        const defaultAddress = response.data.data.find(a => a.is_default);
+                        setAddress(defaultAddress ? defaultAddress.address_line : response.data.data[0].address_line);
+                    }
+                } catch {}
+            };
+            fetchAddresses();
+        };
+
+        const fetchMerchantData = async () => {
+            if (cartItems.length > 0) {
+                try {
+                    const restId = cartItems[0].restaurant_id || cartItems[0].shop_id;
+                    if (restId) {
+                        const res = await restaurantService.getById(restId);
+                        const data = res.data.data;
+                        if (data) {
+                            if (data.other_charges) setCharges(data.other_charges);
+                            if (data.latitude && data.longitude) {
+                                setMerchantLocation({ lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) });
+                            }
+                        }
+                    }
+                } catch {}
+            }
+        };
+
+        fetchUserData();
+        fetchMerchantData();
+    }, [navigate, cartItems]);
+
+    // Haversine Distance Calc
+    useEffect(() => {
+        if (userLoc && merchantLocation) {
+            const rad = x => x * Math.PI / 180;
+            const R = 6371; // Earth Radius
+            const dLat = rad(merchantLocation.lat - userLoc.lat);
+            const dLong = rad(merchantLocation.lng - userLoc.lng);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(rad(userLoc.lat)) * Math.cos(rad(merchantLocation.lat)) *
+                      Math.sin(dLong / 2) * Math.sin(dLong / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            setDistanceKm(Number((R * c).toFixed(2)));
+        }
+    }, [userLoc, merchantLocation]);
+
+    // Financial Calculation Helper
+    // Consolidated above to prevent redeclaration conflict
 
     const handleSaveNewAddress = async () => {
         if (!newAddress.trim()) return;
@@ -116,14 +208,31 @@ const Checkout = () => {
         setLoading(true);
         try {
             const orderData = {
+                restaurant_id: cartItems[0]?.restaurant_id,
+                idempotency_key: window.crypto.randomUUID ? window.crypto.randomUUID() : (Date.now().toString() + Math.random().toString()),
+                address_id: addresses.find(a => a.address_line === address)?.id || null,
                 delivery_address: orderType === 'pickup' ? 'Self Pickup from Store' : address,
                 payment_method: paymentMethod,
                 order_type: orderType,
                 coupon_code: couponDiscount > 0 ? couponCode : null,
+                latitude: userLoc?.lat,
+                longitude: userLoc?.lng,
+                
+                // ACP Breakdown
+                delivery_fee: currentDeliveryFee,
+                packing_charge: currentPackagingCharge,
+                platform_fee: currentPlatformFee,
+                tax_amount: totalMerchantTaxes + foodTax,
+                
                 items: cartItems.map(item => ({
                     product_id: item.id,
+                    product_variant_id: item.variant?.id || null, 
+                    product_name: item.name,
+                    variant_name: item.variant?.name || 'Standard',
+                    image_url: item.image_url || item.image,
+                    unit_price: item.variant ? item.variant.price : item.price,
+                    mrp_price: item.variant ? item.variant.mrp_price : (item.mrp_price || item.price),
                     quantity: item.quantity,
-                    price: item.price
                 }))
             };
             const response = await orderService.placeOrder(orderData);
@@ -337,9 +446,34 @@ const Checkout = () => {
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="text-zinc-500 flex items-center gap-2"><Wallet size={16} /> Taxes & Delivery</span>
-                        <span className="font-semibold text-zinc-900 dark:text-white">₹{(taxes + deliveryFee).toFixed(0)}</span>
+                    <div className="space-y-2 pt-2">
+                        {currentDeliveryFee > 0 && (
+                            <div className="flex justify-between items-center text-[13px]">
+                                <span className="text-zinc-500">
+                                    Delivery Fee 
+                                    {charges.delivery_charge_type === 'distance' && distanceKm > 0 && (
+                                        <span className="text-[10px] text-zinc-400 font-bold ml-1 uppercase">({distanceKm} KM)</span>
+                                    )}
+                                </span>
+                                <span className="font-medium text-zinc-900 dark:text-zinc-300">₹{currentDeliveryFee.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {currentPackagingCharge > 0 && (
+                            <div className="flex justify-between items-center text-[13px]">
+                                <span className="text-zinc-500">Packaging Charge</span>
+                                <span className="font-medium text-zinc-900 dark:text-zinc-300">₹{currentPackagingCharge.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {currentPlatformFee > 0 && (
+                            <div className="flex justify-between items-center text-[13px]">
+                                <span className="text-zinc-500">Platform Fee</span>
+                                <span className="font-medium text-zinc-900 dark:text-zinc-300">₹{currentPlatformFee.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center text-[13px]">
+                            <span className="text-zinc-500 flex items-center gap-2"><Wallet size={16} /> Taxes & GST</span>
+                            <span className="font-medium text-zinc-900 dark:text-zinc-300">₹{(totalMerchantTaxes + foodTax).toFixed(2)}</span>
+                        </div>
                     </div>
 
                     <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-4"></div>

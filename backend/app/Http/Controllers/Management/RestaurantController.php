@@ -16,7 +16,7 @@ class RestaurantController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Restaurant::with(['city.state.country'])
+        $query = Restaurant::with(['city.state.country', 'otherCharges'])
             ->where('is_active', true);
 
         if ($request->has('city_id')) {
@@ -31,7 +31,7 @@ class RestaurantController extends Controller
      */
     public function showPublic($id)
     {
-        $restaurant = Restaurant::with(['city.state.country'])
+        $restaurant = Restaurant::with(['city.state.country', 'otherCharges'])
             ->where('is_active', true)
             ->findOrFail($id);
 
@@ -43,10 +43,10 @@ class RestaurantController extends Controller
      */
     public function show(Request $request)
     {
-        $restaurant = $request->user()->restaurant()->with('merchant')->first();
+        $restaurant = $request->user()->restaurant()->with(['merchant', 'otherCharges'])->first();
         
         if (!$restaurant) {
-            return response()->json(['message' => 'No restaurant node found for this merchant identity.'], 404);
+            return response()->json(['message' => 'No merchant node found for this identity.'], 404);
         }
 
         return response()->json(['data' => $restaurant]);
@@ -64,28 +64,55 @@ class RestaurantController extends Controller
         }
 
         $validated = $request->validate([
-            'name'          => 'nullable|string|max:255',
-            'description'   => 'nullable|string',
-            'address'       => 'nullable|string',
-            'country_id'    => 'nullable|numeric',
-            'state_id'      => 'nullable|numeric',
-            'city_id'       => 'nullable|numeric',
-            'image'         => 'nullable|string',
-            'is_open'       => 'nullable',
-            'opening_time'  => 'nullable|string',
-            'closing_time'  => 'nullable|string',
+            'name'                  => 'nullable|string|max:255',
+            'description'           => 'nullable|string',
+            'address'               => 'nullable|string',
+            'country_id'            => 'nullable|numeric',
+            'state_id'              => 'nullable|numeric',
+            'city_id'               => 'nullable|numeric',
+            'image'                 => 'nullable|string',
+            'is_open'               => 'nullable',
+            'opening_time'          => 'nullable|string',
+            'closing_time'          => 'nullable|string',
+            'delivery_charge'       => 'nullable|numeric',
+            'packaging_charge'      => 'nullable|numeric',
+            'platform_fee'          => 'nullable|numeric',
+            'delivery_charge_tax'   => 'nullable|numeric',
+            'packaging_charge_tax'  => 'nullable|numeric',
+            'platform_fee_tax'      => 'nullable|numeric',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
+            'delivery_charge_type'  => 'nullable|in:fixed,distance',
+            'delivery_charge_per_km'=> 'nullable|numeric',
+            'max_delivery_distance' => 'nullable|numeric',
         ]);
 
-        // Convert is_open to boolean if it's 0/1 or string "true"/"false"
+        // Convert is_open to boolean
         if (isset($validated['is_open'])) {
             $validated['is_open'] = filter_var($validated['is_open'], FILTER_VALIDATE_BOOLEAN);
         }
 
-        $restaurant->update($validated);
+        DB::transaction(function () use ($restaurant, $validated, $request) {
+            $restaurant->update($validated);
+
+            // Update or Create charges
+            $chargeData = $request->only([
+                'delivery_charge', 'packaging_charge', 'platform_fee',
+                'delivery_charge_tax', 'packaging_charge_tax', 'platform_fee_tax',
+                'delivery_charge_type', 'delivery_charge_per_km', 'max_delivery_distance'
+            ]);
+
+            if (!empty($chargeData)) {
+                $restaurant->otherCharges()->updateOrCreate(
+                    ['merchant_id' => $restaurant->id],
+                    $chargeData
+                );
+            }
+        });
 
         return response()->json([
             'message' => 'Merchant profile synchronized successfully.',
-            'data'    => $restaurant->load(['city.state.country'])
+            'data'    => $restaurant->load(['city.state.country', 'otherCharges'])
         ]);
     }
 
@@ -106,6 +133,12 @@ class RestaurantController extends Controller
             'image'           => 'nullable|string',
             'opening_time'    => 'nullable|string',
             'closing_time'    => 'nullable|string',
+            'delivery_charge'       => 'nullable|numeric',
+            'packaging_charge'      => 'nullable|numeric',
+            'platform_fee'          => 'nullable|numeric',
+            'delivery_charge_tax'   => 'nullable|numeric',
+            'packaging_charge_tax'  => 'nullable|numeric',
+            'platform_fee_tax'      => 'nullable|numeric',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -131,9 +164,19 @@ class RestaurantController extends Controller
                 'is_open'      => true,
             ]);
 
+            // 3. Create initial charges
+            $restaurant->otherCharges()->create([
+                'delivery_charge'       => $validated['delivery_charge'] ?? 20.00,
+                'packaging_charge'      => $validated['packaging_charge'] ?? 10.00,
+                'platform_fee'          => $validated['platform_fee'] ?? 5.00,
+                'delivery_charge_tax'   => $validated['delivery_charge_tax'] ?? 5.0,
+                'packaging_charge_tax'  => $validated['packaging_charge_tax'] ?? 18.0,
+                'platform_fee_tax'      => $validated['platform_fee_tax'] ?? 18.0,
+            ]);
+
             return response()->json([
                 'message'    => 'Merchant ecosystem provisioned successfully.',
-                'restaurant' => $restaurant->load(['merchant', 'city.state.country'])
+                'restaurant' => $restaurant->load(['merchant', 'city.state.country', 'otherCharges'])
             ], 201);
         });
     }
@@ -157,9 +200,20 @@ class RestaurantController extends Controller
             'image'           => 'nullable|string',
             'opening_time'    => 'nullable|string',
             'closing_time'    => 'nullable|string',
+            'delivery_charge'       => 'nullable|numeric',
+            'packaging_charge'      => 'nullable|numeric',
+            'platform_fee'          => 'nullable|numeric',
+            'delivery_charge_tax'   => 'nullable|numeric',
+            'packaging_charge_tax'  => 'nullable|numeric',
+            'platform_fee_tax'      => 'nullable|numeric',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
+            'delivery_charge_type'  => 'nullable|in:fixed,distance',
+            'delivery_charge_per_km'=> 'nullable|numeric',
+            'max_delivery_distance' => 'nullable|numeric',
         ]);
 
-        return DB::transaction(function () use ($validated, $restaurant) {
+        return DB::transaction(function () use ($validated, $restaurant, $request) {
             // Update User
             $userData = [];
             if (isset($validated['merchant_name'])) $userData['name'] = $validated['merchant_name'];
@@ -180,12 +234,28 @@ class RestaurantController extends Controller
             if (isset($validated['image'])) $restData['image'] = $validated['image'];
             if (isset($validated['opening_time'])) $restData['opening_time'] = $validated['opening_time'];
             if (isset($validated['closing_time'])) $restData['closing_time'] = $validated['closing_time'];
+            if (isset($validated['latitude'])) $restData['latitude'] = $validated['latitude'];
+            if (isset($validated['longitude'])) $restData['longitude'] = $validated['longitude'];
             
             $restaurant->update($restData);
 
+            // Update Charges
+            $chargeData = $request->only([
+                'delivery_charge', 'packaging_charge', 'platform_fee',
+                'delivery_charge_tax', 'packaging_charge_tax', 'platform_fee_tax',
+                'delivery_charge_type', 'delivery_charge_per_km', 'max_delivery_distance'
+            ]);
+
+            if (!empty($chargeData)) {
+                $restaurant->otherCharges()->updateOrCreate(
+                    ['merchant_id' => $restaurant->id],
+                    $chargeData
+                );
+            }
+
             return response()->json([
                 'message'    => 'Merchant ecosystem updated successfully.',
-                'restaurant' => $restaurant->load(['merchant', 'city.state.country'])
+                'restaurant' => $restaurant->load(['merchant', 'city.state.country', 'otherCharges'])
             ]);
         });
     }
@@ -195,7 +265,7 @@ class RestaurantController extends Controller
      */
     public function listAll()
     {
-        return response()->json(['data' => Restaurant::with(['merchant', 'city.state.country'])->latest()->get()]);
+        return response()->json(['data' => Restaurant::with(['merchant', 'city.state.country', 'otherCharges'])->latest()->get()]);
     }
 
     /**

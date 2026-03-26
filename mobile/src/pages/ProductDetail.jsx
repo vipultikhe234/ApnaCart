@@ -32,6 +32,13 @@ const ProductDetail = () => {
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [userRating, setUserRating] = useState(5);
     const [reviewComment, setReviewComment] = useState('');
+    const [selectedVariant, setSelectedVariant] = useState(null);
+
+    // Dynamic Price Calculation
+    const currentPrice = selectedVariant ? parseFloat(selectedVariant.price) : parseFloat(product?.price || 0);
+    const isOutOfStock = product?.has_variants 
+        ? (selectedVariant ? selectedVariant.available_stock <= 0 : true)
+        : (product?.stock <= 0);
 
     const handleSubmitReview = async () => {
         try {
@@ -55,9 +62,15 @@ const ProductDetail = () => {
                 setProduct(response.data.data);
 
                 const queryParams = new URLSearchParams(location.search);
+                if (response.data.data?.has_variants && response.data.data.variants?.length > 0) {
+                    setSelectedVariant(response.data.data.variants[0]);
+                }
+
                 if (queryParams.get('auto_add') === 'true' && response.data.data) {
                     const qty = parseInt(queryParams.get('qty')) || 1;
-                    addToCart(response.data.data, qty);
+                    const variantId = queryParams.get('variant_id');
+                    const variant = response.data.data.variants?.find(v => v.id == variantId) || response.data.data.variants?.[0];
+                    addToCart(response.data.data, qty, variant);
                     navigate('/cart', { replace: true });
                 }
             } catch (error) {
@@ -123,10 +136,42 @@ const ProductDetail = () => {
                     </div>
                     <div className="text-right">
                         <span className="text-2xl font-bold text-zinc-900 dark:text-white">
-                            ₹{parseFloat(product.price).toFixed(0)}
+                            ₹{currentPrice.toFixed(0)}
                         </span>
                     </div>
                 </div>
+
+                {/* Variant Selection (MNC Style) */}
+                {product.has_variants && product.variants?.length > 0 && (
+                    <div className="mb-8 p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Select Scale/Unit</h3>
+                            {selectedVariant && (
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${selectedVariant.available_stock > 10 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {selectedVariant.available_stock > 0 ? `${selectedVariant.available_stock} In Stock` : 'Out of Stock'}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-2.5">
+                            {product.variants.map((v) => (
+                                <button
+                                    key={v.id}
+                                    disabled={v.available_stock <= 0}
+                                    onClick={() => setSelectedVariant(v)}
+                                    className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${
+                                        selectedVariant?.id === v.id
+                                            ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-lg'
+                                            : v.available_stock <= 0 
+                                                ? 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-300 dark:text-zinc-600 border-zinc-100 dark:border-zinc-800 cursor-not-allowed opacity-50'
+                                                : 'bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300 border-zinc-100 dark:border-zinc-800 hover:border-emerald-500/50 hover:text-emerald-500'
+                                    }`}
+                                >
+                                    {v.quantity}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Specs */}
                 <div className="grid grid-cols-3 gap-3 mb-8">
@@ -251,22 +296,30 @@ const ProductDetail = () => {
                         </div>
 
                         <button
+                            disabled={isOutOfStock}
                             onClick={() => {
                                 const token = localStorage.getItem('access_token');
                                 if (!token) {
-                                    navigate('/login', { state: { from: `/product/${id}?auto_add=true&qty=${quantity}` } });
+                                    const variantStr = selectedVariant ? `&variant_id=${selectedVariant.id}` : '';
+                                    navigate('/login', { state: { from: `/product/${id}?auto_add=true&qty=${quantity}${variantStr}` } });
                                     return;
                                 }
-                                addToCart(product, quantity);
+                                addToCart(product, quantity, selectedVariant);
                                 navigate('/cart');
                             }}
-                            className="flex-1 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl shadow-sm flex items-center justify-between px-6 active:scale-[0.98] transition-transform"
+                            className={`flex-1 rounded-2xl shadow-sm flex items-center justify-between px-6 active:scale-[0.98] transition-all ${
+                                isOutOfStock
+                                    ? 'bg-zinc-200 dark:bg-zinc-800/80 text-zinc-400 dark:text-zinc-500 cursor-not-allowed border border-zinc-100 dark:border-zinc-800'
+                                    : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
+                            }`}
                         >
                             <div className="flex flex-col text-left">
-                                <span className="text-sm font-semibold">Add to cart</span>
-                                <span className="text-[10px] opacity-70">₹{(product.price * quantity).toFixed(0)} total</span>
+                                <span className="text-sm font-semibold">{isOutOfStock ? 'Sold out' : 'Add to cart'}</span>
+                                <span className="text-[10px] opacity-70">
+                                    {isOutOfStock ? 'Notify me' : `₹${(currentPrice * quantity).toFixed(0)} total`}
+                                </span>
                             </div>
-                            <ArrowRight size={18} />
+                            {!isOutOfStock && <ArrowRight size={18} />}
                         </button>
                     </motion.div>
                 )}

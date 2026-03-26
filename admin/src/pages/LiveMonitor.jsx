@@ -63,11 +63,18 @@ const LiveMonitor = () => {
 
                 const activeRiders = (Array.isArray(processedOrders) ? processedOrders : [])
                     .filter(o => o.status === 'out_for_delivery' && o.rider?.current_latitude)
-                    .map(o => ({
-                        ...o.rider,
-                        orderId: o.id,
-                        orderRef: `#ORD-${String(o.id).padStart(4, '0')}`
-                    }));
+                    .map(o => {
+                        const distToCustomer = (o.rider?.current_latitude && o.user_lat) 
+                            ? getDistance(o.rider.current_latitude, o.rider.current_longitude, o.user_lat, o.user_lng)
+                            : null;
+                        
+                        return {
+                            ...o.rider,
+                            orderId: o.id,
+                            orderRef: `#ORD-${String(o.id).padStart(4, '0')}`,
+                            distToCustomer
+                        };
+                    });
                 
                 setRiders(activeRiders);
             } catch (err) {
@@ -108,6 +115,17 @@ const LiveMonitor = () => {
             <p className="text-zinc-500 font-medium text-sm animate-pulse tracking-tight">Synchronizing Logistics Grid...</p>
         </div>
     );
+
+    const getDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return (R * c).toFixed(1);
+    };
 
     const stats = {
         totalRiders: riders.length,
@@ -199,9 +217,19 @@ const LiveMonitor = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-black text-zinc-900 dark:text-white truncate uppercase italic">{rider.name}</p>
-                                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">{rider.orderRef}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">{rider.orderRef}</p>
+                                            {rider.distToCustomer && (
+                                                <>
+                                                    <span className="text-zinc-300 dark:text-zinc-700 font-bold">•</span>
+                                                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">
+                                                        {rider.distToCustomer} KM to DEST
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
                                 </div>
                             ))
                         )}

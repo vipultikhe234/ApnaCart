@@ -52,7 +52,18 @@ const Restaurants = () => {
         city_id: '',
         image: '',
         opening_time: '09:00:00',
-        closing_time: '22:00:00'
+        closing_time: '22:00:00',
+        delivery_charge: 0,
+        packaging_charge: 0,
+        platform_fee: 0,
+        delivery_charge_tax: 0,
+        packaging_charge_tax: 0,
+        platform_fee_tax: 0,
+        latitude: '',
+        longitude: '',
+        delivery_charge_type: 'fixed',
+        delivery_charge_per_km: 0,
+        max_delivery_distance: 0
     };
     
     const [formData, setFormData] = useState(initialFormState);
@@ -108,7 +119,18 @@ const Restaurants = () => {
             city_id: rest.city_id || '',
             image: rest.image || '',
             opening_time: rest.opening_time || '09:00:00',
-            closing_time: rest.closing_time || '22:00:00'
+            closing_time: rest.closing_time || '22:00:00',
+            delivery_charge: rest.other_charges?.delivery_charge || 0,
+            packaging_charge: rest.other_charges?.packaging_charge || 0,
+            platform_fee: rest.other_charges?.platform_fee || 0,
+            delivery_charge_tax: rest.other_charges?.delivery_charge_tax || 0,
+            packaging_charge_tax: rest.other_charges?.packaging_charge_tax || 0,
+            platform_fee_tax: rest.other_charges?.platform_fee_tax || 0,
+            latitude: rest.latitude || '',
+            longitude: rest.longitude || '',
+            delivery_charge_type: rest.other_charges?.delivery_charge_type || 'fixed',
+            delivery_charge_per_km: rest.other_charges?.delivery_charge_per_km || 0,
+            max_delivery_distance: rest.other_charges?.max_delivery_distance || 0
         });
         if (rest.country_id) locationService.getStates(rest.country_id).then(r => setFormStates(r.data));
         if (rest.state_id) locationService.getCities(rest.state_id).then(r => setFormCities(r.data));
@@ -395,6 +417,69 @@ const Restaurants = () => {
                                                 <input required name="val_rest" type="text" placeholder="Merchant / Outlet Name" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.restaurant_name} onChange={(e) => setFormData({...formData, restaurant_name: e.target.value})} />
                                                 <input required name="val_addr" type="text" placeholder="Street Address" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
                                                 <input name="val_img" type="text" placeholder="Image URL (optional)" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Financial Config (Fees & Taxes) */}
+                                    <div className="p-8 bg-zinc-50 dark:bg-zinc-800/30 rounded-[2rem] border-2 border-dashed border-zinc-200 dark:border-zinc-700/50 space-y-8">
+                                        <div className="flex items-center gap-3">
+                                            <Settings size={18} className="text-zinc-400" />
+                                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Financial & Performance Metrics</p>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                            {/* Charges */}
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center px-1">
+                                                    <label className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Base Charges & Strategy (₹)</label>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <select className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.delivery_charge_type} onChange={e => setFormData({...formData, delivery_charge_type: e.target.value})}>
+                                                        <option value="fixed">Fixed Price Strategy</option>
+                                                        <option value="distance">Distance-Based (₹/KM)</option>
+                                                    </select>
+                                                    
+                                                    {formData.delivery_charge_type === 'distance' ? (
+                                                        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                            <div className="flex-1">
+                                                                <input type="number" step="0.1" placeholder="₹ per km" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.delivery_charge_per_km} onChange={e => setFormData({...formData, delivery_charge_per_km: e.target.value})} />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <input type="number" step="0.1" placeholder="Max km" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.max_delivery_distance} onChange={e => setFormData({...formData, max_delivery_distance: e.target.value})} />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <input type="number" step="0.01" placeholder="Fixed Delivery Fee" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.delivery_charge} onChange={e => setFormData({...formData, delivery_charge: e.target.value})} />
+                                                    )}
+
+                                                    <div className="flex gap-3">
+                                                        <div className="flex-1">
+                                                            <input type="number" step="0.01" placeholder="Packing" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.packaging_charge} onChange={e => setFormData({...formData, packaging_charge: e.target.value})} />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <input type="number" step="0.01" placeholder="Service Platform Fee" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.platform_fee} onChange={e => setFormData({...formData, platform_fee: e.target.value})} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Taxes */}
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center px-1">
+                                                    <label className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Taxation / GST (%)</label>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <div className="flex gap-3">
+                                                        <div className="flex-1">
+                                                            <input type="number" step="0.1" placeholder="Delivery Tax" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-amber-500" value={formData.delivery_charge_tax} onChange={e => setFormData({...formData, delivery_charge_tax: e.target.value})} />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <input type="number" step="0.1" placeholder="Packing Tax" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-amber-500" value={formData.packaging_charge_tax} onChange={e => setFormData({...formData, packaging_charge_tax: e.target.value})} />
+                                                        </div>
+                                                    </div>
+                                                    <input type="number" step="0.1" placeholder="Platform Tax" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-amber-500" value={formData.platform_fee_tax} onChange={e => setFormData({...formData, platform_fee_tax: e.target.value})} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

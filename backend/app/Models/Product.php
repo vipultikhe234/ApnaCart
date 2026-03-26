@@ -16,11 +16,19 @@ class Product extends Model
         'restaurant_id',
         'name',
         'description',
+        'has_variants',
         'price',
         'discount_price',
         'image',
         'stock',
-        'is_available'
+        'is_available',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'has_variants' => 'boolean',
+        'is_available' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function category()
@@ -38,8 +46,19 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
-    public function inventory()
+    /**
+     * Get the variants for the product.
+     */
+    public function variants()
     {
-        return $this->hasOne(Inventory::class);
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    /**
+     * Scope for active products.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 }

@@ -15,6 +15,7 @@ import Restaurants from './pages/Restaurants';
 import Users from './pages/Users';
 import UserProfile from './pages/UserProfile';
 import LocationMaster from './pages/LocationMaster';
+import Offers from './pages/Offers';
 
 import { MerchantProvider } from './contexts/MerchantContext';
 
@@ -58,6 +59,7 @@ function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="orders" element={<Orders />} />
           <Route path="coupons" element={<Coupons />} />
+          <Route path="offers" element={<Offers />} />
           <Route path="users" element={<Users />} />
           <Route path="profile" element={<RestaurantProfile />} />
           <Route path="my-profile" element={<UserProfile />} />

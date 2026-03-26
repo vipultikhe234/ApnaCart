@@ -93,7 +93,11 @@ export const authService = {
 export const productService = {
     // Use cached GET — products list rarely changes
     getAll: () => cachedGet('/products', 5 * 60 * 1000),       // 5 min
-    getCategories: () => cachedGet('/categories', 10 * 60 * 1000),    // 10 min
+    getCurated: () => cachedGet('/products/curated', 2 * 60 * 1000), // 2 min
+    getCategories: (params = {}) => {
+        const query = Object.keys(params).length > 0 ? '?' + new URLSearchParams(params).toString() : '';
+        return cachedGet(`/categories${query}`, 10 * 60 * 1000);
+    },
     getById: (id) => cachedGet(`/products/${id}`, 5 * 60 * 1000),
     addReview: (id, data) => {
         bustCache(`/products/${id}`);

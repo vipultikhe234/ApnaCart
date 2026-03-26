@@ -44,3 +44,16 @@
 .btn-active:active {
     transform: scale(0.95);
 }
+
+@keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+.animate-bounce-subtle {
+    animation: bounce-subtle 3s infinite ease-in-out;
+}
+
+.premium-glass {
+    @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-white/20 dark:border-zinc-800/20 shadow-xl;
+}

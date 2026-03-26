@@ -13,6 +13,7 @@ import {
     LogOut,
     Bell,
     ShieldCheck,
+    Zap,
     Menu,
     Navigation,
     X as CloseIcon,
@@ -131,6 +132,7 @@ const ADMIN_NAV = [
             { to: '/restaurants', label: 'Merchant Partners', icon: Store },
             { to: '/categories', label: 'Categories', icon: FolderTree },
             { to: '/products', label: 'Product Catalog', icon: Soup },
+            { to: '/offers', label: 'Live Offers', icon: Zap },
             { to: '/coupons', label: 'Promo & Coupons', icon: TicketPercent },
         ],
     },
@@ -179,6 +181,8 @@ const MERCHANT_NAV = [
         icon: Package,
         items: [
             { to: '/products', label: 'My Menu', icon: Utensils },
+            { to: '/offers', label: 'My Offers', icon: Zap },
+            { to: '/coupons', label: 'My Coupons', icon: TicketPercent },
         ],
     },
     {
@@ -234,8 +238,12 @@ const AdminLayout = () => {
                 .catch(err => console.error('Failed to fetch merchants', err));
         }
 
+        if (user?.role === 'merchant' && user.restaurant?.id && !selectedMerchantId) {
+            setSelectedMerchantId(user.restaurant.id.toString());
+        }
+
         if (document.documentElement.classList.contains('dark')) setIsDarkMode(true);
-    }, [navigate, user, merchants.length, setMerchants]);
+    }, [navigate, user, merchants.length, setMerchants, selectedMerchantId, setSelectedMerchantId]);
 
     const toggleDarkMode = () => {
         const newMode = !isDarkMode;

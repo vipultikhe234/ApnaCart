@@ -15,9 +15,9 @@ class ProductService
         return $this->repository->getAll($restaurantId);
     }
 
-    public function getProductById(int $id)
+    public function getProductById($id)
     {
-        return $this->repository->findById($id);
+        return $this->repository->findById((int) $id);
     }
 
     public function createProduct(array $data)
@@ -33,5 +33,10 @@ class ProductService
     public function deleteProduct(int $id)
     {
         return $this->repository->delete($id);
+    }
+
+    public function getCuratedProducts()
+    {
+        return $this->repository->getCuratedProducts();
     }
 }

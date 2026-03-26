@@ -68,7 +68,7 @@ const Cart = () => {
                     ) : (
                         cartItems.map((item) => (
                             <motion.div
-                                key={item.id}
+                                key={item.cart_item_id}
                                 layout
                                 initial="hidden"
                                 animate="visible"
@@ -84,26 +84,34 @@ const Cart = () => {
                                     <div className="flex justify-between items-start mb-1">
                                         <h4 className="font-semibold text-zinc-900 dark:text-white text-sm truncate pr-2">{item.name}</h4>
                                         <button
-                                            onClick={() => removeFromCart(item.id)}
+                                            onClick={() => removeFromCart(item.cart_item_id)}
                                             className="text-zinc-300 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                         >
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-zinc-400 mb-3">{item.category?.name || 'Exclusive'}</p>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{item.category?.name || 'Exclusive'}</p>
+                                        {item.variant && (
+                                            <>
+                                                <span className="w-1 h-1 bg-zinc-200 dark:bg-zinc-800 rounded-full"></span>
+                                                <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full">{item.variant.quantity}</span>
+                                            </>
+                                        )}
+                                    </div>
 
                                     <div className="flex items-center justify-between">
-                                        <span className="text-base font-semibold text-zinc-900 dark:text-white">₹{parseFloat(item.price).toFixed(0)}</span>
+                                        <span className="text-base font-semibold text-zinc-900 dark:text-white">₹{parseFloat(item.variant ? item.variant.price : item.price).toFixed(0)}</span>
                                         <div className="flex items-center bg-zinc-50 dark:bg-zinc-800 rounded-full p-1 border border-zinc-100 dark:border-zinc-700">
                                             <button
-                                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                onClick={() => updateQuantity(item.cart_item_id, item.quantity - 1)}
                                                 className="w-7 h-7 rounded-full bg-white dark:bg-zinc-700 text-zinc-500 flex items-center justify-center shadow-sm active:scale-95"
                                             >
                                                 <Minus size={12} strokeWidth={2.5} />
                                             </button>
                                             <span className="text-xs font-semibold text-zinc-900 dark:text-white px-3">{item.quantity}</span>
                                             <button
-                                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)}
                                                 className="w-7 h-7 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-sm active:scale-95"
                                             >
                                                 <Plus size={12} strokeWidth={2.5} />

@@ -28,18 +28,59 @@ class OrderService
             }
         }
 
-        // 1. Calculate base total from items
+        // 1. Resolve Restaurant Context (From first item)
+        $firstItemProduct = \App\Models\Product::find($items[0]['product_id'] ?? null);
+        $restaurantId = $firstItemProduct ? $firstItemProduct->restaurant_id : null;
+        $restaurant = $restaurantId ? \App\Models\Restaurant::with('otherCharges')->find($restaurantId) : null;
+        $charges = $restaurant ? $restaurant->otherCharges : null;
+
+        // 2. Base Financial Parameters
         $orderType = $data['order_type'] ?? \App\Models\Order::TYPE_DELIVERY;
-        $deliveryFee = ($orderType === \App\Models\Order::TYPE_PICKUP) ? 0.00 : 49.00;
+        $deliveryFee = 0.00;
+        $distance = 0.00;
         
+        if ($orderType !== \App\Models\Order::TYPE_PICKUP && $charges) {
+            if ($charges->delivery_charge_type === 'distance') {
+                $userLat = $data['latitude'] ?? null;
+                $userLng = $data['longitude'] ?? null;
+                $restLat = $restaurant->latitude;
+                $restLng = $restaurant->longitude;
+
+                if ($userLat && $userLng && $restLat && $restLng) {
+                    $distance = \App\Services\Logistics\DistanceService::calculateDistance($userLat, $userLng, $restLat, $restLng);
+
+                    if ($charges->max_delivery_distance > 0 && $distance > $charges->max_delivery_distance) {
+                        throw new \Exception("The delivery location is beyond the merchant's service radius (Distance: {$distance}km, Limit: {$charges->max_delivery_distance}km).");
+                    }
+
+                    $deliveryFee = $distance * ($charges->delivery_charge_per_km ?? 0.00);
+                } else {
+                    // Fallback to fixed charge if coordinates missing
+                    $deliveryFee = $charges->delivery_charge ?? 0.00;
+                }
+            } else {
+                $deliveryFee = $charges->delivery_charge ?? 0.00;
+            }
+        }
+
+        $packagingCharge = $charges->packaging_charge ?? 0.00;
+        $platformFee = $charges->platform_fee ?? 0.00;
+
+        $deliveryTax = $deliveryFee * (($charges->delivery_charge_tax ?? 0.0) / 100);
+        $packagingTax = $packagingCharge * (($charges->packaging_charge_tax ?? 0.0) / 100);
+        $platformTax = $platformFee * (($charges->platform_fee_tax ?? 0.0) / 100);
+
         $subtotal = array_reduce($items, function ($carry, $item) {
             return $carry + ($item['price'] * $item['quantity']);
         }, 0);
 
+        // Food Tax (fallback 5% for food, assume products don't have individual tax in this requirement)
+        $foodTax = $subtotal * 0.05;
+
         $discount = 0;
         $couponId = null;
 
-        // 2. Handle Coupon if provided
+        // 3. Handle Coupon if provided
         if (!empty($data['coupon_code'])) {
             $coupon = \App\Models\Coupon::where('code', $data['coupon_code'])
                 ->where('is_active', true)
@@ -62,15 +103,14 @@ class OrderService
             $couponId = $coupon->id;
         }
 
-        $totalPrice = ($subtotal + $deliveryFee) - $discount;
+        $totalMerchantFees = $deliveryFee + $packagingCharge + $platformFee;
+        $totalMerchantTaxes = $deliveryTax + $packagingTax + $platformTax;
+
+        $totalPrice = ($subtotal - $discount) + $totalMerchantFees + $totalMerchantTaxes + $foodTax;
         if ($totalPrice < 0) $totalPrice = 0;
 
-        // 3. Resolve Restaurant Context (From first item)
-        $firstItemProduct = \App\Models\Product::find($items[0]['product_id'] ?? null);
-        $restaurantId = $firstItemProduct ? $firstItemProduct->restaurant_id : null;
-
         // 4. Wrap order + payment creation in a transaction
-        return DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId, $restaurantId, $orderType) {
+        return DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId, $restaurantId, $distance) {
             $orderData = [
                 'user_id'        => $data['user_id'],
                 'restaurant_id'  => $restaurantId,
@@ -78,10 +118,13 @@ class OrderService
                 'status'         => \App\Models\Order::STATUS_PLACED,
                 'payment_status' => 'pending',
                 'address'        => $data['delivery_address'],
+                'user_lat'       => $data['latitude'] ?? null,
+                'user_lng'       => $data['longitude'] ?? null,
+                'distance_km'    => $distance ?? 0,
                 'discount'       => $discount,
                 'coupon_id'      => $couponId,
-                'order_type'     => $orderType,
-                'estimated_delivery_time' => now()->addMinutes(30), // Default 30 min
+                'order_type'     => $data['order_type'] ?? \App\Models\Order::TYPE_DELIVERY,
+                'estimated_delivery_time' => now()->addMinutes(30),
             ];
 
             $order = $this->repository->create($orderData, $items);

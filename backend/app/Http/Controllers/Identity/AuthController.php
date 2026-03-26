@@ -49,6 +49,10 @@ class AuthController extends Controller
             $user->save();
         }
 
+        if ($user->role === 'merchant') {
+            $user->load('restaurant');
+        }
+
         return response()->json([
             'user' => $user,
             'access_token' => $user->createToken('auth_token')->plainTextToken,

@@ -61,4 +61,9 @@ class Restaurant extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function otherCharges()
+    {
+        return $this->hasOne(MerchantOtherCharge::class, 'merchant_id');
+    }
 }

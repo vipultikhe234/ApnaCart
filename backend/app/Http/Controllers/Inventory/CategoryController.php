@@ -26,7 +26,16 @@ class CategoryController extends Controller
 
         $cacheKey = "categories_r_" . ($targetId ?? 'all') . "_role_" . $role;
 
-        return Cache::remember($cacheKey, 3600, function () use ($targetId) {
+        return Cache::remember($cacheKey, 3600, function () use ($targetId, $request) {
+            if ($request->has('unique') && $request->unique) {
+                // Get one record per name (unique public categories)
+                return CategoryResource::collection(
+                    Category::select('name')
+                        ->selectRaw('MAX(id) as id, MAX(image) as image')
+                        ->groupBy('name')
+                        ->get()
+                );
+            }
             $categories = $this->service->getAllCategories($targetId);
             return CategoryResource::collection($categories);
         });

@@ -35,6 +35,12 @@ class ProductController extends Controller
         });
     }
 
+    public function curated()
+    {
+        $products = $this->service->getCuratedProducts();
+        return ProductResource::collection($products);
+    }
+
     public function show($id)
     {
         $product = $this->service->getProductById($id);

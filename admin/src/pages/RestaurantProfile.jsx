@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, MapPin, Clock, Globe, Info, CheckCircle, Save, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Store, MapPin, Clock, Globe, Info, CheckCircle, Save, Loader2, Tag, Image as ImageIcon } from 'lucide-react';
 import { restaurantService, locationService } from '../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -18,7 +18,18 @@ const RestaurantProfile = () => {
         is_open: true,
         opening_time: '09:00:00',
         closing_time: '22:00:00',
-        image: ''
+        image: '',
+        delivery_charge: 0,
+        packaging_charge: 0,
+        platform_fee: 0,
+        delivery_charge_tax: 0,
+        packaging_charge_tax: 0,
+        platform_fee_tax: 0,
+        latitude: '',
+        longitude: '',
+        delivery_charge_type: 'fixed',
+        delivery_charge_per_km: 0,
+        max_delivery_distance: 10
     });
 
     const [countries, setCountries] = useState([]);
@@ -52,7 +63,18 @@ const RestaurantProfile = () => {
                 is_open: data.is_open ?? true,
                 opening_time: data.opening_time || '09:00:00',
                 closing_time: data.closing_time || '22:00:00',
-                image: data.image || ''
+                image: data.image || '',
+                delivery_charge: data.other_charges?.delivery_charge || 0,
+                packaging_charge: data.other_charges?.packaging_charge || 0,
+                platform_fee: data.other_charges?.platform_fee || 0,
+                delivery_charge_tax: data.other_charges?.delivery_charge_tax || 0,
+                packaging_charge_tax: data.other_charges?.packaging_charge_tax || 0,
+                platform_fee_tax: data.other_charges?.platform_fee_tax || 0,
+                latitude: data.latitude || '',
+                longitude: data.longitude || '',
+                delivery_charge_type: data.other_charges?.delivery_charge_type || 'fixed',
+                delivery_charge_per_km: data.other_charges?.delivery_charge_per_km || 0,
+                max_delivery_distance: data.other_charges?.max_delivery_distance || 10
             });
             // Pre-load dependent selects
             if (data.country_id) {
@@ -199,6 +221,19 @@ const RestaurantProfile = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
+                                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 px-1">Latitude</label>
+                                <input type="number" step="0.00000001" value={restaurant.latitude} onChange={(e) => setRestaurant({...restaurant, latitude: e.target.value})}
+                                    className={sel} placeholder="e.g. 18.5204" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 px-1">Longitude</label>
+                                <input type="number" step="0.00000001" value={restaurant.longitude} onChange={(e) => setRestaurant({...restaurant, longitude: e.target.value})}
+                                    className={sel} placeholder="e.g. 73.8567" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
                                 <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 px-1">Opening Time</label>
                                 <div className="relative">
                                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
@@ -212,6 +247,79 @@ const RestaurantProfile = () => {
                                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
                                     <input type="time" value={restaurant.closing_time} onChange={(e) => setRestaurant({...restaurant, closing_time: e.target.value})}
                                         className={sel + " pl-12"} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Fees & Charges */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6">
+                        <div className="flex items-center gap-3 mb-2">
+                             <div className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg"><Tag size={18} className="text-zinc-500" /></div>
+                             <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Fees & Performance Config</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <label className="block text-[10px] font-black text-emerald-500 uppercase tracking-widest px-1">Delivery Logistical Strategy</label>
+                                <div className="space-y-3">
+                                    <select className={sel} value={restaurant.delivery_charge_type} onChange={(e) => setRestaurant({...restaurant, delivery_charge_type: e.target.value})}>
+                                        <option value="fixed">Fixed Price Only</option>
+                                        <option value="distance">Distance-Based (INR/KM)</option>
+                                    </select>
+                                    {restaurant.delivery_charge_type === 'distance' ? (
+                                        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="flex-1">
+                                                <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1">₹ per KM</label>
+                                                <input type="number" step="0.1" value={restaurant.delivery_charge_per_km} onChange={(e) => setRestaurant({...restaurant, delivery_charge_per_km: e.target.value})} className={sel} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1">Max Dist (KM)</label>
+                                                <input type="number" step="0.1" value={restaurant.max_delivery_distance} onChange={(e) => setRestaurant({...restaurant, max_delivery_distance: e.target.value})} className={sel} />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1">Fixed Delivery Fee (₹)</label>
+                                            <input type="number" step="0.01" value={restaurant.delivery_charge} onChange={(e) => setRestaurant({...restaurant, delivery_charge: e.target.value})} className={sel} />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="block text-[10px] font-black text-blue-500 uppercase tracking-widest px-1">Operational Fees (₹)</label>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1">Packaging Charge</label>
+                                            <input type="number" step="0.01" value={restaurant.packaging_charge} onChange={(e) => setRestaurant({...restaurant, packaging_charge: e.target.value})} className={sel} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1">Platform Fee</label>
+                                            <input type="number" step="0.01" value={restaurant.platform_fee} onChange={(e) => setRestaurant({...restaurant, platform_fee: e.target.value})} className={sel} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                             <div className="space-y-4">
+                                <label className="block text-[10px] font-black text-amber-500 uppercase tracking-widest px-1">Taxation & GST (%)</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1 text-center">Delivery</label>
+                                        <input type="number" step="0.1" value={restaurant.delivery_charge_tax} onChange={(e) => setRestaurant({...restaurant, delivery_charge_tax: e.target.value})} className={sel + " text-center"} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1 text-center">Packing</label>
+                                        <input type="number" step="0.1" value={restaurant.packaging_charge_tax} onChange={(e) => setRestaurant({...restaurant, packaging_charge_tax: e.target.value})} className={sel + " text-center"} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5 px-1 text-center">Platform</label>
+                                        <input type="number" step="0.1" value={restaurant.platform_fee_tax} onChange={(e) => setRestaurant({...restaurant, platform_fee_tax: e.target.value})} className={sel + " text-center"} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
