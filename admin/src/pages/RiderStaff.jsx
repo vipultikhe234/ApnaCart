@@ -144,9 +144,12 @@ const RiderStaff = () => {
                                             <span className="text-xs font-medium font-mono">{rider.phone}</span>
                                         </div>
                                         {rider.merchant_id && (
-                                            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
-                                                <Store size={14} />
-                                                <span className="text-[10px] font-black uppercase tracking-widest truncate">Node Assignment: #{rider.merchant_id}</span>
+                                            <div className="flex items-center justify-between col-span-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                                                <div className="flex items-center gap-3">
+                                                    <Store size={14} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest truncate">Node: {merchants.find(m => String(m.id) === String(rider.merchant_id))?.name || 'Unknown'}</span>
+                                                </div>
+                                                <span className="text-[9px] font-bold opacity-60">#{rider.merchant_id}</span>
                                             </div>
                                         )}
                                     </div>
@@ -182,20 +185,20 @@ const RiderStaff = () => {
                             initial={{ y: 50, opacity: 0, scale: 0.9 }}
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 50, opacity: 0, scale: 0.9 }}
-                            className="relative w-full max-w-[500px] bg-white dark:bg-zinc-900 rounded-[40px] shadow-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800"
+                            className="relative w-full max-w-[500px] bg-white dark:bg-zinc-900 rounded-[40px] shadow-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 flex flex-col max-h-[90vh]"
                         >
-                            <div className="p-8 lg:p-10">
-                                <header className="flex items-center justify-between mb-8">
+                            <div className="p-8 lg:p-10 flex flex-col h-full">
+                                <header className="flex items-center justify-between mb-8 shrink-0">
                                     <div>
                                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white uppercase italic tracking-tight">Onboard {isMerchant ? 'Staff' : 'Rider'}</h2>
                                         <p className="text-zinc-500 text-xs font-medium mt-1">{isMerchant ? 'Register a courier for your station.' : 'Initialize new logistics personnel profile.'}</p>
                                     </div>
-                                    <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 shrink-0">
                                         <X size={20} />
                                     </button>
                                 </header>
 
-                                <form onSubmit={handleOnboard} className="space-y-5">
+                                <form onSubmit={handleOnboard} className="space-y-5 overflow-y-auto flex-1 custom-scrollbar pr-2">
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 italic">Full Identity Name</label>
                                         <input 

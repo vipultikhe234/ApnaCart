@@ -113,7 +113,9 @@ const Offers = () => {
             setProducts(prodRes.data.data || []);
             
             // For admins in global view, we need the merchant list for assignment
-            if (!selectedMerchantId) {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const isMerchantUser = user.role === 'merchant' || user.role === 'Merchant';
+            if (!selectedMerchantId && !isMerchantUser) {
                 const mercRes = await api.get('/admin/merchants');
                 setMerchants(mercRes.data.data || []);
             }
@@ -240,7 +242,7 @@ const Offers = () => {
                             <div>
                                 <h3 className="text-base font-bold text-zinc-900 dark:text-white truncate">{offer.title}</h3>
                                 <p className="text-[10px] font-bold text-zinc-400 mt-1 flex items-center gap-1.5 uppercase tracking-wide">
-                                    <Store size={10} /> {offer.Merchant?.name || 'Global'}
+                                    <Store size={10} /> {offer.merchant?.name || 'Global'}
                                 </p>
                             </div>
 
@@ -286,16 +288,16 @@ const Offers = () => {
                 {showModal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)} className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm" />
-                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-3xl shadow-2xl overflow-hidden">
-                            <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
                                 <div>
                                     <h2 className="text-xl font-bold text-zinc-900 dark:text-white uppercase tracking-tight">{editingId ? 'Modify Promotion' : 'Configure New Offer'}</h2>
                                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Global & Merchant Targeted Deals</p>
                                 </div>
-                                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-400"><X size={20} /></button>
+                                <button type="button" onClick={() => setShowModal(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-400"><X size={20} /></button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                            <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto flex-1">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Column 1: Identity & Offer Structure */}
                                     <div className="space-y-6">
@@ -333,7 +335,7 @@ const Offers = () => {
                                                 <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500">
                                                     <label className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] block">Assign to Merchant</label>
                                                     <div className="relative">
-                                                        <select required className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-zinc-900 border-2 border-rose-500/20 dark:border-rose-500/10 rounded-2xl outline-none focus:border-rose-500 transition-colors dark:text-white font-bold text-[10px] uppercase appearance-none shadow-sm" value={form.merchant_id} onChange={(e) => setForm({ ...form, merchant_id: e.target.value })}>
+                                                        <select required className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-zinc-900 border-2 border-rose-500/20 dark:border-rose-500/10 rounded-2xl outline-none focus:border-rose-500 transition-colors dark:text-white font-bold text-[10px] uppercase appearance-none shadow-sm" value={form.merchant_id} onChange={(e) => setForm({ ...form, merchant_id: e.target.value, category_id: '', product_id: '' })}>
                                                             <option value="">Select Target Merchant</option>
                                                             {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                                         </select>
@@ -368,7 +370,7 @@ const Offers = () => {
                                                 <div className="relative">
                                                     <select className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none focus:border-emerald-500 transition-colors dark:text-white font-bold text-[10px] uppercase appearance-none shadow-sm" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value, product_id: '' })}>
                                                         <option value="">Global / Select Category</option>
-                                                        {categories.map(c => <option key={c.id} value={c.id}>{c.name} {!selectedMerchantId && `(${c.merchant?.name || 'Global'})`}</option>)}
+                                                        {categories.filter(c => !form.merchant_id || String(c.merchant_id) === String(form.merchant_id)).map(c => <option key={c.id} value={c.id}>{c.name} {!selectedMerchantId && `(${c.merchant?.name || 'Global'})`}</option>)}
                                                     </select>
                                                     <LayoutGrid size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400" />
                                                 </div>
