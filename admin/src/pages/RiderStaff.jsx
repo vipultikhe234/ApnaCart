@@ -40,11 +40,11 @@ const RiderStaff = () => {
             setLoading(true);
             const config = { 
                 headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-                params: { restaurant_id: selectedMerchantId }
+                params: { merchant_id: selectedMerchantId }
             };
             const [staffRes, mercRes] = await Promise.all([
                 axios.get(`${import.meta.env.VITE_API_URL}/rider/staff`, config),
-                !isMerchant ? axios.get(`${import.meta.env.VITE_API_URL}/admin/restaurants`, config) : Promise.resolve({ data: { data: [] } })
+                !isMerchant ? axios.get(`${import.meta.env.VITE_API_URL}/admin/merchants`, config) : Promise.resolve({ data: { data: [] } })
             ]);
             
             setRiders(staffRes.data.data || []);
@@ -250,7 +250,7 @@ const RiderStaff = () => {
                                             >
                                                 <option value="">Global Fleet (Unassigned)</option>
                                                 {merchants.map(m => (
-                                                    <option key={m.id} value={m.merchant_id}>{m.name} (ID: {m.id})</option>
+                                                    <option key={m.id} value={m.id}>{m.name} (ID: {m.id})</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -274,3 +274,4 @@ const RiderStaff = () => {
 };
 
 export default RiderStaff;
+

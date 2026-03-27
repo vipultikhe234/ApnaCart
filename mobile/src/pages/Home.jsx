@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { productService, addressService, restaurantService, locationService } from '../services/api';
+import { productService, addressService, MerchantService, locationService } from '../services/api';
 import {
     MapPin,
     Search,
@@ -23,7 +23,7 @@ import LiveOffersSection from '../components/LiveOffersSection';
 const Home = () => {
     const navigate = useNavigate();
     const [categories, setCategories] = useState([]);
-    const [restaurants, setRestaurants] = useState([]);
+    const [Merchants, setMerchants] = useState([]);
     const [allCities, setAllCities] = useState([]);
     const [selectedCity, setSelectedCity] = useState(null); // {id, name}
     const [showCityModal, setShowCityModal] = useState(false);
@@ -43,13 +43,13 @@ const Home = () => {
                 const [catRes, prodRes, restRes, cityRes, curatedRes] = await Promise.all([
                     productService.getCategories({ unique: 1 }),
                     productService.getAll(),
-                    restaurantService.getAll(),
+                    MerchantService.getAll(),
                     locationService.getCities(),
                     productService.getCurated()
                 ]);
                 setCategories(catRes.data.data || []);
                 setPopularProducts(prodRes.data.data || []);
-                setRestaurants(restRes.data.data || []);
+                setMerchants(restRes.data.data || []);
                 setAllCities(cityRes.data || []);
                 setCuratedProducts(curatedRes.data.data || []);
             } catch (error) {
@@ -61,9 +61,9 @@ const Home = () => {
         fetchData();
     }, []);
 
-    const filteredRestaurants = selectedCity 
-        ? restaurants.filter(r => r.city_id === selectedCity.id)
-        : restaurants;
+    const filteredMerchants = selectedCity 
+        ? Merchants.filter(r => r.city_id === selectedCity.id)
+        : Merchants;
 
     const filteredProducts = activeCategory === 'All'
         ? popularProducts
@@ -127,7 +127,7 @@ const Home = () => {
                     className="flex items-center gap-3 bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 active:scale-[0.98] transition-transform cursor-pointer"
                 >
                     <Search size={20} className="text-zinc-400" />
-                    <span className="text-zinc-400 font-medium text-sm">Search for dishes, restaurants...</span>
+                    <span className="text-zinc-400 font-medium text-sm">Search for dishes, Merchants...</span>
                 </div>
             </motion.div>
 
@@ -169,25 +169,25 @@ const Home = () => {
                 </div>
             </motion.div>
 
-            {/* Restaurants Section */}
+            {/* Merchants Section */}
             <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-10">
                 <div className="px-6 flex justify-between items-baseline mb-5">
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Top Restaurants</h2>
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Top Merchants</h2>
                     <Link to="/all-merchants" className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 active:scale-95 transition-transform group">
                         Explore All <ChevronDown size={12} className="-rotate-90 group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                 </div>
                 <div className="flex gap-4 overflow-x-auto px-6 no-scrollbar pb-4">
-                    {filteredRestaurants.length === 0 ? (
+                    {filteredMerchants.length === 0 ? (
                         <div className="w-full py-10 flex flex-col items-center justify-center opacity-40 bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 border-dashed">
                              <Utensils size={40} className="mb-3 text-zinc-300" />
                              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">No merchants in this area yet</p>
                         </div>
                     ) : (
-                        filteredRestaurants.map(rest => (
+                        filteredMerchants.map(rest => (
                             <Link 
                                 key={rest.id} 
-                                to={`/restaurant/${rest.id}`}
+                                to={`/Merchant/${rest.id}`}
                                 className="bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0 w-72 group"
                             >
                                 <div className="aspect-[16/9] relative">
@@ -227,7 +227,7 @@ const Home = () => {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-8">
                     <AnimatePresence mode="popLayout">
                         {curatedProducts
-                            .filter(p => !selectedCity || p.restaurant?.city_id === selectedCity.id)
+                            .filter(p => !selectedCity || p.Merchant?.city_id === selectedCity.id)
                             .map((p, idx) => (
                             <motion.div
                                 key={`curated-${p.id}`}
@@ -267,7 +267,7 @@ const Home = () => {
                                         <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-medium mb-3">
                                             <span>{p.category?.name || 'Exclusive'}</span>
                                             <span className="w-1 h-1 bg-zinc-300 rounded-full"></span>
-                                            <span className="flex items-center gap-0.5 uppercase font-bold tracking-tighter text-[8px]">{p.restaurant?.name}</span>
+                                            <span className="flex items-center gap-0.5 uppercase font-bold tracking-tighter text-[8px]">{p.Merchant?.name}</span>
                                         </div>
                                         
                                         <div className="flex items-center justify-between">
@@ -338,7 +338,7 @@ const Home = () => {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-8">
                     <AnimatePresence mode="popLayout">
                         {filteredProducts
-                            .filter(p => !selectedCity || p.restaurant?.city_id === selectedCity.id)
+                            .filter(p => !selectedCity || p.Merchant?.city_id === selectedCity.id)
                             .slice(0, 8)
                             .map((p, idx) => (
                             <motion.div
@@ -352,7 +352,19 @@ const Home = () => {
                                 <Link to={`/product/${p.id}`} className="block group">
                                     <div className="aspect-square bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl overflow-hidden mb-3 relative">
                                         <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                        <div className="absolute top-3 left-3 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                                        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                                            {p.is_popular && (
+                                                <div className="bg-amber-500 text-white text-[7px] font-black px-2 py-0.5 rounded-md shadow-sm uppercase tracking-widest border border-white/20">
+                                                    Popular
+                                                </div>
+                                            )}
+                                            {p.is_new && (
+                                                <div className="bg-blue-500 text-white text-[7px] font-black px-2 py-0.5 rounded-md shadow-sm uppercase tracking-widest border border-white/20">
+                                                    New
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="absolute top-3 right-3 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                                             <Star size={10} className="text-yellow-500 fill-yellow-500" />
                                             <span className="text-[10px] font-semibold text-zinc-900 dark:text-white">4.8</span>
                                         </div>
@@ -479,3 +491,4 @@ const Home = () => {
 };
 
 export default Home;
+

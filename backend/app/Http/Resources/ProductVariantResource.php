@@ -15,9 +15,9 @@ class ProductVariantResource extends JsonResource
     public function toArray(Request $request): array
     {
         // Calculate available stock across all relevant inventory nodes or current shop
-        $restaurantId = $request->query('restaurant_id');
+        $MerchantId = $request->query('merchant_id');
         $inventory = $this->inventories
-            ->where('restaurant_id', $restaurantId)
+            ->where('merchant_id', $MerchantId)
             ->first();
 
         return [
@@ -33,3 +33,4 @@ class ProductVariantResource extends JsonResource
         ];
     }
 }
+

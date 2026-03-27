@@ -50,7 +50,7 @@ class AuthController extends Controller
         }
 
         if ($user->role === 'merchant') {
-            $user->load('restaurant');
+            $user->load('merchant');
         }
 
         return response()->json([
@@ -91,3 +91,4 @@ class AuthController extends Controller
         ]);
     }
 }
+

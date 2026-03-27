@@ -240,9 +240,9 @@ const Orders = () => {
                                                             <p className="font-bold text-zinc-900 dark:text-white tracking-tight text-sm mb-0.5 uppercase">#ORD-{String(order.id).padStart(4, '0')}</p>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
-                                                                {order.restaurant && (
+                                                                {order.Merchant && (
                                                                     <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                                                                        {order.restaurant.name}
+                                                                        {order.Merchant.name}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -414,3 +414,4 @@ const Orders = () => {
 };
 
 export default Orders;
+

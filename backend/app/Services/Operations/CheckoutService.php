@@ -5,7 +5,7 @@ namespace App\Services\Operations;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Inventory;
-use App\Models\Restaurant;
+use App\Models\Merchant;
 use App\Models\UserAddress;
 use App\Models\Coupon;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +23,7 @@ class CheckoutService
     {
         return DB::transaction(function () use ($data, $user) {
             // 1. Resolve Global Entities
-            $restaurant = Restaurant::findOrFail($data['restaurant_id']);
+            $Merchant = Merchant::findOrFail($data['merchant_id']);
             $address = UserAddress::find($data['address_id']);
             
             // 2. Initial Calculations
@@ -34,7 +34,7 @@ class CheckoutService
             foreach ($data['items'] as $item) {
                 // Precise locking to prevent race conditions during checkout
                 $inventory = Inventory::where('product_variant_id', $item['product_variant_id'])
-                    ->where('restaurant_id', $restaurant->id)
+                    ->where('merchant_id', $Merchant->id)
                     ->lockForUpdate()
                     ->first();
 
@@ -70,40 +70,49 @@ class CheckoutService
             
             $discountAmount = 0;
             if (isset($data['coupon_code'])) {
-                $coupon = Coupon::where('code', $data['coupon_code'])->active()->first();
-                if ($coupon && $subtotal >= $coupon->min_order_amount) {
+                $coupon = Coupon::where('code', $data['coupon_code'])
+                    ->where(function($q) use ($Merchant) {
+                        $q->whereNull('merchant_id')
+                          ->orWhere('merchant_id', $Merchant->id);
+                    })
+                    ->active()
+                    ->first();
+
+                if ($coupon && $subtotal >= (float)$coupon->min_order_amount) {
                     $discountAmount = $coupon->type === 'percentage' 
-                        ? ($subtotal * $coupon->value / 100) 
-                        : $coupon->value;
+                        ? ($subtotal * (float)$coupon->value / 100) 
+                        : (float)$coupon->value;
                 }
             }
 
             $totalAmount = ($subtotal + $deliveryFee + $packingCharge + $platformFee + $taxAmount) - $discountAmount;
 
-            // 5. Create Order Header
+            // 5. Create Order Header — matching actual `orders` table columns
             $order = Order::create([
-                'order_number' => 'ORD-' . strtoupper(Str::random(10)),
-                'idempotency_key' => $data['idempotency_key'] ?? Str::uuid(),
-                'user_id' => $user->id,
-                'restaurant_id' => $restaurant->id,
-                'subtotal_amount' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'delivery_fee' => $deliveryFee,
-                'packing_charge' => $packingCharge,
-                'platform_fee' => $platformFee,
-                'discount_amount' => $discountAmount,
-                'total_amount' => $totalAmount,
-                'currency' => 'INR',
-                'address_id' => $address?->id,
-                'address' => $address ? "{$address->address_line}, {$address->landmark}, {$address->city}" : 'Pickup',
-                'payment_method' => $data['payment_method'] ?? 'online',
-                'payment_status' => 'pending',
-                'status' => 'placed',
-                'order_type' => $address ? 'delivery' : 'pickup',
-                'payment_expires_at' => Carbon::now()->addMinutes(15),
-                'total_items' => count($itemsData),
-                'total_quantity' => collect($itemsData)->sum('quantity'),
-                'notes' => $data['notes'] ?? null,
+                'user_id'          => $user->id,
+                'merchant_id'      => $Merchant->id,
+                'subtotal'         => $subtotal,
+                'tax_amount'       => $taxAmount,
+                'delivery_fee'     => $deliveryFee,
+                'packaging_fee'    => $packingCharge,
+                'platform_fee'     => $platformFee,
+                'coupon_discount'  => $discountAmount,
+                'coupon_code'      => $data['coupon_code'] ?? null,
+                'total_price'      => $totalAmount,
+                'address_id'       => $address?->id,
+                'address_snapshot' => $address
+                    ? json_encode([
+                        'line'     => $address->address_line,
+                        'landmark' => $address->landmark,
+                        'city'     => $address->city,
+                        'pincode'  => $address->pincode,
+                    ])
+                    : json_encode(['note' => 'Pickup']),
+                'payment_method'   => $data['payment_method'] ?? 'COD',
+                'payment_status'   => 'pending',
+                'status'           => 'pending',
+                'order_type'       => $address ? 'delivery' : 'pickup',
+                'notes'            => $data['notes'] ?? null,
             ]);
 
             // 6. Bulk Create Items
@@ -124,3 +133,4 @@ class CheckoutService
         });
     }
 }
+

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { authService, restaurantService } from '../services/api';
+import { authService, MerchantService } from '../services/api';
 import { useMerchant } from '../contexts/MerchantContext';
 import {
     LayoutDashboard,
@@ -129,7 +129,7 @@ const ADMIN_NAV = [
         label: 'Merchant Network',
         icon: Store,
         items: [
-            { to: '/restaurants', label: 'Merchant Partners', icon: Store },
+            { to: '/Merchants', label: 'Merchant Partners', icon: Store },
             { to: '/categories', label: 'Categories', icon: FolderTree },
             { to: '/products', label: 'Product Catalog', icon: Soup },
             { to: '/offers', label: 'Live Offers', icon: Zap },
@@ -233,13 +233,16 @@ const AdminLayout = () => {
         }
 
         if (user?.role === 'admin' && merchants.length === 0) {
-            restaurantService.listAll()
+            MerchantService.listAll()
                 .then(res => setMerchants(res.data.data))
                 .catch(err => console.error('Failed to fetch merchants', err));
         }
 
-        if (user?.role === 'merchant' && user.restaurant?.id && !selectedMerchantId) {
-            setSelectedMerchantId(user.restaurant.id.toString());
+        if (user?.role === 'merchant') {
+            const mId = user.merchant?.id?.toString();
+            if (mId && selectedMerchantId !== mId) {
+                setSelectedMerchantId(mId);
+            }
         }
 
         if (document.documentElement.classList.contains('dark')) setIsDarkMode(true);
@@ -428,3 +431,4 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
+

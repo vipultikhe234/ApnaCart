@@ -20,9 +20,9 @@ export const CartProvider = ({ children }) => {
 
     const addToCart = (product, quantity = 1, variant = null) => {
         setCartItems(prev => {
-            // Check if cart is not empty and the new product is from a different restaurant
-            if (prev.length > 0 && prev[0].restaurant_id !== product.restaurant_id) {
-                const confirmed = window.confirm("Your cart contains products from another restaurant. Do you want to clear your cart and add this instead?");
+            // Check if cart is not empty and the new product is from a different Merchant
+            if (prev.length > 0 && prev[0].merchant_id !== product.merchant_id) {
+                const confirmed = window.confirm("Your cart contains products from another Merchant. Do you want to clear your cart and add this instead?");
                 if (!confirmed) return prev;
                 // If confirmed, treat the cart as empty
                 const newItem = { ...product, quantity, variant, cart_item_id: `${product.id}${variant ? '-' + variant.id : ''}` };
@@ -70,3 +70,4 @@ export const CartProvider = ({ children }) => {
 };
 
 export const useCart = () => useContext(CartContext);
+

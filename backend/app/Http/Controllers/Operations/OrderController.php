@@ -56,16 +56,16 @@ class OrderController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $order = Order::with(['items.product', 'user', 'payment', 'restaurant'])->find($id);
+        $order = Order::with(['items.product', 'user', 'payment', 'merchant'])->find($id);
 
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        // Check permissions: Admin, the Customer who placed it, or the Merchant who owns the restaurant
+        // Check permissions: Admin, the Customer who placed it, or the Merchant who owns the Merchant
         $isOwner = $order->user_id === $request->user()->id;
         $isAdmin = $request->user()->role === 'admin';
-        $isMerchant = $request->user()->role === 'merchant' && $order->restaurant_id === $request->user()->restaurant?->id;
+        $isMerchant = $request->user()->role === 'merchant' && $order->merchant_id === $request->user()->merchant?->id;
 
         if (!$isOwner && !$isAdmin && !$isMerchant) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -80,10 +80,10 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         if ($request->user()->role === 'admin' || $request->user()->role === 'merchant') {
-            // Admins can optionally provide a restaurant_id in query
+            // Admins can optionally provide a merchant_id in query
             // Merchants are automatically scoped by the trait
-            $restaurantId = $request->query('restaurant_id');
-            $orders = $this->service->getOrders($restaurantId);
+            $merchantId = $request->query('merchant_id');
+            $orders = $this->service->getOrders($merchantId);
         } else {
             $orders = $this->service->getUserOrders($request->user()->id);
         }
@@ -105,9 +105,9 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        // Only Admin or the Merchant owning the restaurant can update status
+        // Only Admin or the Merchant owning the Merchant can update status
         $isAdmin = $request->user()->role === 'admin';
-        $isMerchant = $request->user()->role === 'merchant' && $order->restaurant_id === $request->user()->restaurant?->id;
+        $isMerchant = $request->user()->role === 'merchant' && $order->merchant_id === $request->user()->merchant?->id;
 
         if (!$isAdmin && !$isMerchant) {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -163,3 +163,4 @@ class OrderController extends Controller
         }
     }
 }
+

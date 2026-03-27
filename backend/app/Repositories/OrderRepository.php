@@ -8,22 +8,22 @@ use Illuminate\Support\Facades\DB;
 
 class OrderRepository
 {
-    public function getAll($restaurantId = null)
+    public function getAll($MerchantId = null)
     {
-        return Order::byRestaurant($restaurantId)
-            ->with(['user', 'restaurant', 'rider', 'items.product', 'payment', 'coupon'])
+        return Order::byMerchant($MerchantId)
+            ->with(['user', 'Merchant', 'rider', 'items.product', 'payment', 'coupon'])
             ->latest()
             ->get();
     }
 
     public function findById($id)
     {
-        return Order::with(['user', 'restaurant', 'rider', 'items.product', 'payment', 'coupon'])->find($id);
+        return Order::with(['user', 'Merchant', 'rider', 'items.product', 'payment', 'coupon'])->find($id);
     }
 
     public function getUserOrders($userId)
     {
-        return Order::with(['restaurant', 'items.product', 'coupon'])->where('user_id', $userId)->latest()->get();
+        return Order::with(['Merchant', 'items.product', 'coupon'])->where('user_id', $userId)->latest()->get();
     }
 
     public function create(array $data, array $items)
@@ -59,7 +59,7 @@ class OrderRepository
                 if ($variant) {
                     // Variants use the Inventory ecosystem (Multi-Outlet)
                     $inventory = \App\Models\Inventory::where('product_variant_id', $variant->id)
-                        ->where('restaurant_id', $order->restaurant_id)
+                        ->where('merchant_id', $order->merchant_id)
                         ->first();
                     
                     if ($inventory) {
@@ -85,3 +85,4 @@ class OrderRepository
         return null;
     }
 }
+

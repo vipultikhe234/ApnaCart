@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->text('fcm_token')->nullable()->after('remember_token');
+        Schema::table('reviews', function (Blueprint $table) {
+            $table->foreignId('product_id')->nullable()->after('merchant_id')->constrained()->cascadeOnDelete();
         });
     }
 
@@ -21,8 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('fcm_token');
+        Schema::table('reviews', function (Blueprint $table) {
+            $table->dropForeign(['product_id']);
+            $table->dropColumn('product_id');
         });
     }
 };

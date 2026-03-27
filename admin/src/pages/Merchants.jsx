@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { restaurantService, locationService } from '../services/api';
+import { MerchantService, locationService } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { 
     Store, 
@@ -23,15 +23,17 @@ import {
     UserCircle,
     Info,
     Share2,
-    Settings
+    Settings,
+    Sparkles,
+    Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useMerchant } from '../contexts/MerchantContext';
 
-const Restaurants = () => {
-    const { setMerchants } = useMerchant();
-    const [restaurants, setRestaurants] = useState([]);
+const Merchants = () => {
+    const { setMerchants: setGlobalMerchants } = useMerchant();
+    const [merchants, setMerchantsList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [updatingId, setUpdatingId] = useState(null);
@@ -45,7 +47,7 @@ const Restaurants = () => {
         merchant_name: '',
         email: '',
         password: '',
-        restaurant_name: '',
+        Merchant_name: '',
         address: '',
         country_id: '',
         state_id: '',
@@ -72,20 +74,20 @@ const Restaurants = () => {
     const [formCities, setFormCities] = useState([]);
 
     useEffect(() => {
-        fetchRestaurants();
+        fetchMerchants();
         locationService.getCountries().then(r => setCountries(r.data)).catch(() => {});
     }, []);
 
-    const fetchRestaurants = async () => {
+    const fetchMerchants = async () => {
         try {
             setLoading(true);
-            const res = await restaurantService.listAll();
+            const res = await MerchantService.listAll();
             const data = res.data.data || [];
-            setRestaurants(data);
-            setMerchants(data); // Sync global context
+            setMerchantsList(data);
+            setGlobalMerchants(data); // Sync global context
         } catch (error) {
             console.error("Error fetching data:", error);
-            setRestaurants([]);
+            setMerchantsList([]);
         } finally {
             setLoading(false);
         }
@@ -94,8 +96,8 @@ const Restaurants = () => {
     const handleToggleStatus = async (id) => {
         setUpdatingId(id);
         try {
-            await restaurantService.toggleStatus(id);
-            setRestaurants(prev => prev.map(r => 
+            await MerchantService.toggleStatus(id);
+            setMerchantsList(prev => prev.map(r => 
                 r.id === id ? { ...r, is_active: !r.is_active } : r
             ));
             toast.success("Status updated successfully.");
@@ -109,10 +111,10 @@ const Restaurants = () => {
     const openEditModal = (rest) => {
         setEditingId(rest.id);
         setFormData({
-            merchant_name: rest.merchant?.name || '',
-            email: rest.merchant?.email || '',
+            merchant_name: rest.user?.name || '',
+            email: rest.user?.email || '',
             password: '', 
-            restaurant_name: rest.name || '',
+            Merchant_name: rest.name || '',
             address: rest.address || '',
             country_id: rest.country_id || '',
             state_id: rest.state_id || '',
@@ -153,20 +155,40 @@ const Restaurants = () => {
         setFormCities(r.data);
     };
 
+    const handleAIGenImage = async () => {
+        if (!formData.Merchant_name) return toast.error("Enter a name first");
+        setFormLoading(true);
+        try {
+            const { fetchRealFoodImage } = await import('../utils/aiHelpers');
+            const url = await fetchRealFoodImage(formData.Merchant_name, true, formData.address, 'merchant');
+            setFormData(prev => ({ ...prev, image: url }));
+            toast.success("AI Image generated successfully");
+        } catch (error) {
+            console.error("AI Image Generation Error:", error);
+            toast.error("AI Image generation failed");
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
     const handleSaveMerchant = async (e) => {
         e.preventDefault();
         setFormLoading(true);
         try {
             if (editingId) {
-                const res = await restaurantService.updateMerchant(editingId, formData);
-                const updated = res.data.restaurant;
-                setRestaurants(prev => prev.map(r => r.id === editingId ? updated : r));
-                setMerchants(prev => prev.map(r => r.id === editingId ? updated : r)); // Sync global
+                const res = await MerchantService.updateMerchant(editingId, formData);
+                const updated = res.data.merchant || res.data.Merchant; // Handle both cases for safety
+                if (updated) {
+                    setMerchantsList(prev => prev.map(r => r.id === editingId ? updated : r));
+                    setGlobalMerchants(prev => prev.map(r => r.id === editingId ? updated : r));
+                }
             } else {
-                const res = await restaurantService.createMerchant(formData);
-                const newlyCreated = res.data.restaurant;
-                setRestaurants(prev => [newlyCreated, ...prev]);
-                setMerchants(prev => [newlyCreated, ...prev]); // Sync global
+                const res = await MerchantService.createMerchant(formData);
+                const newlyCreated = res.data.merchant || res.data.Merchant;
+                if (newlyCreated) {
+                    setMerchantsList(prev => [newlyCreated, ...prev]);
+                    setGlobalMerchants(prev => [newlyCreated, ...prev]);
+                }
             }
             setIsModalOpen(false);
             setEditingId(null);
@@ -185,10 +207,10 @@ const Restaurants = () => {
         setIsViewModalOpen(true);
     };
 
-    const filtered = (restaurants || []).filter(r => 
+    const filtered = (merchants || []).filter(r => 
         (r?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (r?.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r?.merchant?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (r?.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (loading) return (
@@ -209,7 +231,7 @@ const Restaurants = () => {
                 
                 <div className="flex items-center gap-4">
                     <button 
-                        onClick={fetchRestaurants}
+                        onClick={fetchMerchants}
                         className="p-3.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-400 hover:text-emerald-500 transition-all active:scale-95"
                     >
                         <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
@@ -327,14 +349,14 @@ const Restaurants = () => {
 
                                         {/* Owner Info */}
                                         <td className="py-5 px-6">
-                                            {rest.merchant ? (
+                                            {rest.user ? (
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-700 text-zinc-500 font-black text-[10px] shrink-0 uppercase">
-                                                        {rest.merchant.name?.[0]}
+                                                        {rest.user.name?.[0]}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-[11px] font-black text-zinc-900 dark:text-white leading-none mb-1 truncate">{rest.merchant.name}</p>
-                                                        <p className="text-[9px] text-zinc-400 font-medium truncate">{rest.merchant.email}</p>
+                                                        <p className="text-[11px] font-black text-zinc-900 dark:text-white leading-none mb-1 truncate">{rest.user.name}</p>
+                                                        <p className="text-[9px] text-zinc-400 font-medium truncate">{rest.user.email}</p>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -414,9 +436,33 @@ const Restaurants = () => {
                                         <div className="space-y-6">
                                             <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Merchant Outlet</p>
                                             <div className="space-y-4">
-                                                <input required name="val_rest" type="text" placeholder="Merchant / Outlet Name" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.restaurant_name} onChange={(e) => setFormData({...formData, restaurant_name: e.target.value})} />
+                                                <input required name="val_rest" type="text" placeholder="Merchant / Outlet Name" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.Merchant_name} onChange={(e) => setFormData({...formData, Merchant_name: e.target.value})} />
                                                 <input required name="val_addr" type="text" placeholder="Street Address" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
-                                                <input name="val_img" type="text" placeholder="Image URL (optional)" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} />
+                                                <div className="flex gap-4">
+                                                    <div className="flex-1 relative">
+                                                        <input name="val_img" type="text" placeholder="Image URL (optional)" className="w-full h-14 bg-zinc-100 dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700/50 rounded-2xl px-6 text-[14px] font-black text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-500 shadow-sm pr-14" value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} />
+                                                        {formLoading && (
+                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                                <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+                                                            </div>
+                                                        )}
+                                                        {!formLoading && (
+                                                            <button 
+                                                                type="button"
+                                                                onClick={handleAIGenImage}
+                                                                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all shadow-lg active:scale-90"
+                                                                title="Generate AI Image"
+                                                            >
+                                                                <Sparkles size={14} className="animate-pulse" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {formData.image && (
+                                                        <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-sm shrink-0">
+                                                            <img src={formData.image} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -429,56 +475,71 @@ const Restaurants = () => {
                                         </div>
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                            {/* Charges */}
+                                            {/* Charges Section */}
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center px-1">
-                                                    <label className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Base Charges & Strategy (₹)</label>
+                                                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Pricing & Fees (₹)</label>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <select className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.delivery_charge_type} onChange={e => setFormData({...formData, delivery_charge_type: e.target.value})}>
-                                                        <option value="fixed">Fixed Price Strategy</option>
-                                                        <option value="distance">Distance-Based (₹/KM)</option>
-                                                    </select>
-                                                    
-                                                    {formData.delivery_charge_type === 'distance' ? (
-                                                        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                            <div className="flex-1">
-                                                                <input type="number" step="0.1" placeholder="₹ per km" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.delivery_charge_per_km} onChange={e => setFormData({...formData, delivery_charge_per_km: e.target.value})} />
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <input type="number" step="0.1" placeholder="Max km" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.max_delivery_distance} onChange={e => setFormData({...formData, max_delivery_distance: e.target.value})} />
-                                                            </div>
+                                                <div className="space-y-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Delivery Strategy</label>
+                                                            <select className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" value={formData.delivery_charge_type} onChange={e => setFormData({...formData, delivery_charge_type: e.target.value})}>
+                                                                <option value="fixed">Fixed Rate</option>
+                                                                <option value="distance">Distance Based (km)</option>
+                                                            </select>
                                                         </div>
-                                                    ) : (
-                                                        <input type="number" step="0.01" placeholder="Fixed Delivery Fee" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.delivery_charge} onChange={e => setFormData({...formData, delivery_charge: e.target.value})} />
-                                                    )}
+                                                        
+                                                        {formData.delivery_charge_type === 'distance' ? (
+                                                            <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                                <div className="flex-1 space-y-1.5">
+                                                                    <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Rate (₹/km)</label>
+                                                                    <input type="number" step="0.1" placeholder="e.g. 5.0" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" value={formData.delivery_charge_per_km} onChange={e => setFormData({...formData, delivery_charge_per_km: e.target.value})} />
+                                                                </div>
+                                                                <div className="flex-1 space-y-1.5">
+                                                                    <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Max dist</label>
+                                                                    <input type="number" step="0.1" placeholder="e.g. 10" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" value={formData.max_delivery_distance} onChange={e => setFormData({...formData, max_delivery_distance: e.target.value})} />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Flat Delivery Fee</label>
+                                                                <input type="number" step="0.01" placeholder="e.g. 20.00" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" value={formData.delivery_charge} onChange={e => setFormData({...formData, delivery_charge: e.target.value})} />
+                                                            </div>
+                                                        )}
 
-                                                    <div className="flex gap-3">
-                                                        <div className="flex-1">
-                                                            <input type="number" step="0.01" placeholder="Packing" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.packaging_charge} onChange={e => setFormData({...formData, packaging_charge: e.target.value})} />
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Packing Fee</label>
+                                                                <input type="number" step="0.01" placeholder="₹" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" value={formData.packaging_charge} onChange={e => setFormData({...formData, packaging_charge: e.target.value})} />
+                                                            </div>
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Platform Fee</label>
+                                                                <input type="number" step="0.01" placeholder="₹" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-emerald-500 text-zinc-900 dark:text-white" value={formData.platform_fee} onChange={e => setFormData({...formData, platform_fee: e.target.value})} />
+                                                            </div>
                                                         </div>
-                                                        <div className="flex-1">
-                                                            <input type="number" step="0.01" placeholder="Service Platform Fee" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-emerald-500" value={formData.platform_fee} onChange={e => setFormData({...formData, platform_fee: e.target.value})} />
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* Taxes */}
+                                            {/* Taxes Section */}
                                             <div className="space-y-4">
                                                 <div className="flex justify-between items-center px-1">
-                                                    <label className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Taxation / GST (%)</label>
+                                                    <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Taxation & GST (%)</label>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <div className="flex gap-3">
-                                                        <div className="flex-1">
-                                                            <input type="number" step="0.1" placeholder="Delivery Tax" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-amber-500" value={formData.delivery_charge_tax} onChange={e => setFormData({...formData, delivery_charge_tax: e.target.value})} />
+                                                <div className="space-y-4">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Delivery Tax</label>
+                                                            <input type="number" step="0.1" placeholder="%" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-amber-500 text-zinc-900 dark:text-white" value={formData.delivery_charge_tax} onChange={e => setFormData({...formData, delivery_charge_tax: e.target.value})} />
                                                         </div>
-                                                        <div className="flex-1">
-                                                            <input type="number" step="0.1" placeholder="Packing Tax" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-amber-500" value={formData.packaging_charge_tax} onChange={e => setFormData({...formData, packaging_charge_tax: e.target.value})} />
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Packing Tax</label>
+                                                            <input type="number" step="0.1" placeholder="%" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-amber-500 text-zinc-900 dark:text-white" value={formData.packaging_charge_tax} onChange={e => setFormData({...formData, packaging_charge_tax: e.target.value})} />
                                                         </div>
                                                     </div>
-                                                    <input type="number" step="0.1" placeholder="Platform Tax" className="w-full h-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-xs font-bold outline-none focus:border-amber-500" value={formData.platform_fee_tax} onChange={e => setFormData({...formData, platform_fee_tax: e.target.value})} />
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Service/Platform Tax (%)</label>
+                                                        <input type="number" step="0.1" placeholder="e.g. 18.0" className="w-full h-11 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-bold outline-none focus:border-amber-500 text-zinc-900 dark:text-white" value={formData.platform_fee_tax} onChange={e => setFormData({...formData, platform_fee_tax: e.target.value})} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -612,10 +673,10 @@ const Restaurants = () => {
                                         <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 space-y-5">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 bg-zinc-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-zinc-900 font-black text-sm uppercase">
-                                                    {viewingMerchant.merchant?.name?.[0]}
+                                                    {viewingMerchant.user?.name?.[0]}
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1.5 uppercase">{viewingMerchant.merchant?.name}</p>
+                                                    <p className="text-xs font-black text-zinc-900 dark:text-white leading-none mb-1.5 uppercase">{viewingMerchant.user?.name}</p>
                                                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest w-fit">
                                                         <ShieldCheck size={8} /> Verified Partner
                                                     </div>
@@ -624,11 +685,11 @@ const Restaurants = () => {
                                             <div className="space-y-3 pt-2">
                                                 <div className="flex items-center gap-3 text-zinc-500">
                                                     <Mail size={14} className="shrink-0" />
-                                                    <span className="text-[11px] font-bold truncate">{viewingMerchant.merchant?.email}</span>
+                                                    <span className="text-[11px] font-bold truncate">{viewingMerchant.user?.email}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3 text-zinc-500">
                                                     <Phone size={14} className="shrink-0" />
-                                                    <span className="text-[11px] font-bold tracking-widest">{viewingMerchant.merchant?.phone || '+1 XXX XXX XXXX'}</span>
+                                                    <span className="text-[11px] font-bold tracking-widest">{viewingMerchant.user?.phone || '+1 XXX XXX XXXX'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -652,7 +713,7 @@ const Restaurants = () => {
                                             <div className="p-5 bg-zinc-50 dark:bg-zinc-800/30 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
                                                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 text-center">Joined</p>
                                                 <p className="text-[10px] font-black text-zinc-900 dark:text-white text-center uppercase tracking-widest">
-                                                    {new Date(viewingMerchant.merchant?.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                                                    {new Date(viewingMerchant.user?.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                                                 </p>
                                             </div>
                                         </div>
@@ -670,4 +731,5 @@ const Restaurants = () => {
     );
 };
 
-export default Restaurants;
+export default Merchants;
+

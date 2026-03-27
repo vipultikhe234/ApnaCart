@@ -13,8 +13,9 @@ class City extends Model
         return $this->belongsTo(State::class);
     }
 
-    public function restaurants()
+    public function Merchants()
     {
-        return $this->hasMany(Restaurant::class);
+        return $this->hasMany(Merchant::class);
     }
 }
+

@@ -10,8 +10,8 @@ import MerchantDashboard from './pages/MerchantDashboard';
 import LiveMonitor from './pages/LiveMonitor';
 import RiderStaff from './pages/RiderStaff';
 import Coupons from './pages/Coupons';
-import RestaurantProfile from './pages/RestaurantProfile';
-import Restaurants from './pages/Restaurants';
+import MerchantProfile from './pages/MerchantProfile';
+import Merchants from './pages/Merchants';
 import Users from './pages/Users';
 import UserProfile from './pages/UserProfile';
 import LocationMaster from './pages/LocationMaster';
@@ -61,9 +61,9 @@ function App() {
           <Route path="coupons" element={<Coupons />} />
           <Route path="offers" element={<Offers />} />
           <Route path="users" element={<Users />} />
-          <Route path="profile" element={<RestaurantProfile />} />
+          <Route path="profile" element={<MerchantProfile />} />
           <Route path="my-profile" element={<UserProfile />} />
-          <Route path="restaurants" element={<Restaurants />} />
+          <Route path="Merchants" element={<Merchants />} />
           <Route path="location-master" element={<LocationMaster />} />
         </Route>
         </Routes>
@@ -73,3 +73,4 @@ function App() {
 }
 
 export default App;
+

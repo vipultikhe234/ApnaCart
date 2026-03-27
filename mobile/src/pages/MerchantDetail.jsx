@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { productService, restaurantService } from '../services/api';
+import { productService, MerchantService } from '../services/api';
 import { 
     ChevronLeft, 
     Star, 
@@ -15,36 +15,36 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 
-const RestaurantDetail = () => {
+const MerchantDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [restaurant, setRestaurant] = useState(null);
+    const [Merchant, setMerchant] = useState(null);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { addToCart, cartItems, updateQuantity } = useCart();
 
     useEffect(() => {
-        const fetchRestaurantData = async () => {
+        const fetchMerchantData = async () => {
             try {
                 const [restRes, prodRes] = await Promise.all([
-                    restaurantService.getById(id),
-                    productService.getAll() // We'll filter these by restaurant_id
+                    MerchantService.getById(id),
+                    productService.getAll() // We'll filter these by merchant_id
                 ]);
-                setRestaurant(restRes.data.data);
+                setMerchant(restRes.data.data);
                 
-                // Filter products that belong to this restaurant
-                const restaurantProducts = (prodRes.data.data || []).filter(
-                    p => p.restaurant_id === parseInt(id)
+                // Filter products that belong to this Merchant
+                const MerchantProducts = (prodRes.data.data || []).filter(
+                    p => p.merchant_id === parseInt(id)
                 );
-                setProducts(restaurantProducts);
+                setProducts(MerchantProducts);
             } catch (error) {
-                console.error("Error fetching restaurant detail:", error);
+                console.error("Error fetching Merchant detail:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchRestaurantData();
+        fetchMerchantData();
     }, [id]);
 
     const filteredProducts = products.filter(p => 
@@ -58,12 +58,12 @@ const RestaurantDetail = () => {
         </div>
     );
 
-    if (!restaurant) return (
+    if (!Merchant) return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center space-y-6">
             <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400">
                 <Info size={40} />
             </div>
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Restaurant Not Found</h2>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Merchant Not Found</h2>
             <button onClick={() => navigate('/')} className="px-8 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-sm tracking-tight active:scale-95 transition-transform shadow-lg">Back to Home</button>
         </div>
     );
@@ -73,8 +73,8 @@ const RestaurantDetail = () => {
             {/* Minimalist Header Image */}
             <div className="relative h-64 overflow-hidden">
                 <img 
-                    src={restaurant.image || 'https://images.unsplash.com/photo-1517248135467-4c7ed9d42339'} 
-                    alt={restaurant.name} 
+                    src={Merchant.image || 'https://images.unsplash.com/photo-1517248135467-4c7ed9d42339'} 
+                    alt={Merchant.name} 
                     className="w-full h-full object-cover scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -87,7 +87,7 @@ const RestaurantDetail = () => {
                 </button>
                 
                 <div className="absolute bottom-6 left-6 right-6">
-                    <h1 className="text-3xl font-black text-white tracking-tight uppercase mb-2">{restaurant.name}</h1>
+                    <h1 className="text-3xl font-black text-white tracking-tight uppercase mb-2">{Merchant.name}</h1>
                     <div className="flex items-center gap-4 text-white/80 text-xs font-bold uppercase tracking-widest">
                         <div className="flex items-center gap-1">
                             <Star size={12} className="text-yellow-400 fill-yellow-400 font-black" />
@@ -96,13 +96,13 @@ const RestaurantDetail = () => {
                         <span className="w-1 h-1 bg-white/40 rounded-full"></span>
                         <div className="flex items-center gap-1">
                             <Clock size={12} />
-                            <span>{restaurant.opening_time} - {restaurant.closing_time}</span>
+                            <span>{Merchant.opening_time} - {Merchant.closing_time}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Restaurant Info Card */}
+            {/* Merchant Info Card */}
             <div className="px-6 -mt-6 relative z-10">
                 <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 space-y-4">
                     <div className="flex items-start gap-4">
@@ -111,7 +111,7 @@ const RestaurantDetail = () => {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Location Details</p>
-                            <p className="text-xs font-bold text-zinc-900 dark:text-white leading-relaxed uppercase">{restaurant.address}</p>
+                            <p className="text-xs font-bold text-zinc-900 dark:text-white leading-relaxed uppercase">{Merchant.address}</p>
                         </div>
                     </div>
                 </div>
@@ -154,12 +154,21 @@ const RestaurantDetail = () => {
                                 <div className="flex-1 flex flex-col justify-between py-1">
                                     <div>
                                         <div className="flex justify-between items-start">
-                                            <h4 className="font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-tight line-clamp-1">{p.name}</h4>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2.5 h-2.5 rounded-sm border-2 ${p.is_veg ? 'border-emerald-500 flex items-center justify-center p-[2px]' : 'border-rose-500 flex items-center justify-center p-[2px]'}`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${p.is_veg ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                                </div>
+                                                <h4 className="font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-tight line-clamp-1">{p.name}</h4>
+                                            </div>
                                             <span className="text-sm font-black text-emerald-600">₹{parseFloat(p.price).toFixed(0)}</span>
                                         </div>
-                                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mt-1 line-clamp-2 leading-relaxed">
-                                            {p.description || 'Premium gourmet selection prepared with locally sourced fresh ingredients.'}
+                                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mt-1 line-clamp-1 leading-relaxed">
+                                            {p.description || 'Premium selection.'}
                                         </p>
+                                        <div className="flex items-center gap-3 mt-1.5 p-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg w-max">
+                                            <Clock size={8} className="text-zinc-500" />
+                                            <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-widest">{p.preparation_time || 15} MINS</span>
+                                        </div>
                                     </div>
                                     
                                     <div className="flex justify-end mt-2">
@@ -204,4 +213,5 @@ const RestaurantDetail = () => {
     );
 };
 
-export default RestaurantDetail;
+export default MerchantDetail;
+

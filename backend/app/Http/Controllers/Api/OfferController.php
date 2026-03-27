@@ -16,7 +16,7 @@ class OfferController extends Controller
     {
         // Caching for 5 minutes since offers don't change by the second
         return Cache::remember('active_live_offers', 300, function () use ($request) {
-            return Offer::with(['restaurant:id,name,image', 'product:id,name,image', 'category:id,name,image'])
+            return Offer::with(['merchant:id,name,image', 'product:id,name,image', 'category:id,name,image'])
                 ->active()
                 ->orderBy('priority', 'desc')
                 ->orderBy('discount_value', 'desc')
@@ -37,12 +37,12 @@ class OfferController extends Controller
                                 : "₹{$offer->discount_value} OFF"
                         ],
                         'merchant' => [
-                            'id' => $offer->restaurant_id,
-                            'name' => $offer->restaurant->name ?? 'ApnaCart Merchant',
+                            'id' => $offer->merchant_id,
+                            'name' => $offer->merchant->name ?? 'ApnaCart Merchant',
                         ],
                         'target' => [
                             'type' => $offer->product_id ? 'product' : ($offer->category_id ? 'category' : 'store'),
-                            'id' => $offer->product_id ?? $offer->category_id ?? $offer->restaurant_id,
+                            'id' => $offer->product_id ?? $offer->category_id ?? $offer->merchant_id,
                         ],
                         'validity' => $offer->end_date ? 'Valid till ' . $offer->end_date->format('jS M') : 'Limited Time',
                         'is_hot' => $offer->priority >= 10,
@@ -56,10 +56,10 @@ class OfferController extends Controller
      */
     public function listAll(Request $request)
     {
-        $query = Offer::with(['restaurant', 'product', 'category']);
+        $query = Offer::with(['merchant', 'product', 'category']);
         
-        if ($request->restaurant_id) {
-            $query->where('restaurant_id', $request->restaurant_id);
+        if ($request->merchant_id) {
+            $query->where('merchant_id', $request->merchant_id);
         }
 
         return response()->json([
@@ -73,7 +73,7 @@ class OfferController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'restaurant_id' => 'required|exists:restaurants,id',
+            'merchant_id' => 'required|exists:merchants,id',
             'category_id' => 'nullable|exists:categories,id',
             'product_id' => 'nullable|exists:products,id',
             'title' => 'required|string',
@@ -141,3 +141,4 @@ class OfferController extends Controller
         return response()->json(['success' => true]);
     }
 }
+

@@ -28,11 +28,11 @@ class OrderService
             }
         }
 
-        // 1. Resolve Restaurant Context (From first item)
+        // 1. Resolve Merchant Context (From first item)
         $firstItemProduct = \App\Models\Product::find($items[0]['product_id'] ?? null);
-        $restaurantId = $firstItemProduct ? $firstItemProduct->restaurant_id : null;
-        $restaurant = $restaurantId ? \App\Models\Restaurant::with('otherCharges')->find($restaurantId) : null;
-        $charges = $restaurant ? $restaurant->otherCharges : null;
+        $MerchantId = $firstItemProduct ? $firstItemProduct->merchant_id : null;
+        $Merchant = $MerchantId ? \App\Models\Merchant::with('otherCharges')->find($MerchantId) : null;
+        $charges = $Merchant ? $Merchant->otherCharges : null;
 
         // 2. Base Financial Parameters
         $orderType = $data['order_type'] ?? \App\Models\Order::TYPE_DELIVERY;
@@ -43,8 +43,8 @@ class OrderService
             if ($charges->delivery_charge_type === 'distance') {
                 $userLat = $data['latitude'] ?? null;
                 $userLng = $data['longitude'] ?? null;
-                $restLat = $restaurant->latitude;
-                $restLng = $restaurant->longitude;
+                $restLat = $Merchant->latitude;
+                $restLng = $Merchant->longitude;
 
                 if ($userLat && $userLng && $restLat && $restLng) {
                     $distance = \App\Services\Logistics\DistanceService::calculateDistance($userLat, $userLng, $restLat, $restLng);
@@ -110,10 +110,10 @@ class OrderService
         if ($totalPrice < 0) $totalPrice = 0;
 
         // 4. Wrap order + payment creation in a transaction
-        return DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId, $restaurantId, $distance) {
+        return DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId, $MerchantId, $distance) {
             $orderData = [
                 'user_id'        => $data['user_id'],
-                'restaurant_id'  => $restaurantId,
+                'merchant_id'  => $MerchantId,
                 'total_price'    => $totalPrice,
                 'status'         => \App\Models\Order::STATUS_PLACED,
                 'payment_status' => 'pending',
@@ -236,9 +236,9 @@ class OrderService
         });
     }
 
-    public function getOrders($restaurantId = null)
+    public function getOrders($MerchantId = null)
     {
-        return $this->repository->getAll($restaurantId);
+        return $this->repository->getAll($MerchantId);
     }
 
     public function getUserOrders($userId)
@@ -261,3 +261,4 @@ class OrderService
         return $result;
     }
 }
+

@@ -32,12 +32,12 @@ const LiveOffersSection = () => {
             } else if (offer.target.type === 'category') {
                 navigate(`/search?category=${offer.target.id}`);
             } else {
-                navigate(`/restaurant/${offer.target.id}`);
+                navigate(`/Merchant/${offer.target.id}`);
             }
         } catch (error) {
             console.error("Click logging error:", error);
             // Still navigate even if logging fails
-            navigate(offer.target.type === 'product' ? `/product/${offer.target.id}` : `/restaurant/${offer.target.id}`);
+            navigate(offer.target.type === 'product' ? `/product/${offer.target.id}` : `/Merchant/${offer.target.id}`);
         }
     };
 
@@ -119,3 +119,4 @@ const LiveOffersSection = () => {
 };
 
 export default LiveOffersSection;
+

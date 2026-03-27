@@ -29,10 +29,17 @@ class User extends Authenticatable
         'longitude',
         'current_latitude',
         'current_longitude',
-        'merchant_id',
         'is_ready',
         'fcm_token'
     ];
+
+    /**
+     * Set the user's role consistently to lowercase.
+     */
+    public function setRoleAttribute($value)
+    {
+        $this->attributes['role'] = strtolower($value);
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -62,9 +69,9 @@ class User extends Authenticatable
         return $this->hasMany(UserAddress::class);
     }
 
-    public function restaurant()
+    public function merchant()
     {
-        return $this->hasOne(Restaurant::class, 'merchant_id');
+        return $this->hasOne(Merchant::class, 'user_id');
     }
 
     public function isAdmin(): bool

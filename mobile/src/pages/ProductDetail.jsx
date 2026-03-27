@@ -174,39 +174,40 @@ const ProductDetail = () => {
                 )}
 
                 {/* Specs */}
-                <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="grid grid-cols-4 gap-2 mb-8">
                     {[
-                        { label: 'Calories', val: '450 kcal', icon: Flame },
-                        { label: 'Time', val: '15-20 min', icon: Clock },
-                        { label: 'Type', val: 'Organic', icon: Leaf }
+                        { label: 'Calories', val: `${product.calories || 0} kcal`, icon: Flame, color: 'text-orange-500' },
+                        { label: 'Time', val: `${product.preparation_time || 20} min`, icon: Clock, color: 'text-blue-500' },
+                        { label: 'Spicy', val: `Lvl ${product.spicy_level || 0}`, icon: Flame, color: 'text-rose-500' },
+                        { label: 'Type', val: product.is_veg ? 'Veg' : 'Non-Veg', icon: product.is_veg ? Leaf : Utensils, color: product.is_veg ? 'text-emerald-500' : 'text-rose-500' }
                     ].map((spec, i) => {
                         const Icon = spec.icon;
                         return (
-                            <div key={i} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col items-center gap-2">
-                                <Icon size={18} className="text-zinc-400" />
-                                <div className="text-center">
-                                    <p className="text-[11px] font-semibold text-zinc-900 dark:text-white">{spec.val}</p>
-                                    <p className="text-[9px] text-zinc-500 uppercase tracking-wider">{spec.label}</p>
+                            <div key={i} className="bg-white dark:bg-zinc-900 p-2.5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col items-center gap-1.5 min-w-0">
+                                <Icon size={14} className={spec.color} />
+                                <div className="text-center w-full">
+                                    <p className="text-[10px] font-black text-zinc-900 dark:text-white truncate uppercase tracking-tighter">{spec.val}</p>
+                                    <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">{spec.label}</p>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Restaurant Info */}
-                {product.restaurant && (
+                {/* Merchant Info */}
+                {product.Merchant && (
                     <div className="mb-8 p-4 bg-zinc-900 dark:bg-zinc-800 rounded-3xl text-white flex items-center justify-between shadow-lg">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-white/10 rounded-2xl overflow-hidden backdrop-blur-md flex items-center justify-center">
                                 <Utensils size={24} className="text-white" />
                             </div>
                             <div>
-                                <h4 className="text-sm font-bold uppercase tracking-tight line-clamp-1">{product.restaurant.name}</h4>
+                                <h4 className="text-sm font-bold uppercase tracking-tight line-clamp-1">{product.Merchant.name}</h4>
                                 <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Explore Full Menu</p>
                             </div>
                         </div>
                         <Link 
-                            to={`/restaurant/${product.restaurant_id}`}
+                            to={`/Merchant/${product.merchant_id}`}
                             className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white active:scale-90 transition-transform"
                         >
                             <ArrowRight size={18} />
@@ -385,3 +386,4 @@ const ProductDetail = () => {
 };
 
 export default ProductDetail;
+

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { orderService } from '../services/api';
 import { toast } from 'react-hot-toast';
 
-export const useDashboardStats = (restaurantId = null) => {
+export const useDashboardStats = (MerchantId = null) => {
     const [orders, setOrders] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -13,8 +13,8 @@ export const useDashboardStats = (restaurantId = null) => {
             setLoading(true);
             try {
                 const [ordersRes, statsRes] = await Promise.all([
-                    orderService.getAllOrders(restaurantId),
-                    orderService.getStats(restaurantId),
+                    orderService.getAllOrders(MerchantId),
+                    orderService.getStats(MerchantId),
                 ]);
                 setOrders(ordersRes.data.data || []);
                 setStats(statsRes.data);
@@ -26,7 +26,7 @@ export const useDashboardStats = (restaurantId = null) => {
             }
         };
         fetchData();
-    }, [restaurantId]);
+    }, [MerchantId]);
 
     const handleStatusChange = async (orderId, newStatus) => {
         const prev = orders.find(o => o.id === orderId)?.status;
@@ -47,3 +47,4 @@ export const useDashboardStats = (restaurantId = null) => {
 
     return { orders, stats, loading, error, handleStatusChange };
 };
+

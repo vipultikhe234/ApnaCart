@@ -21,7 +21,7 @@ use App\Http\Controllers\Logistics\RiderController;
 
 use App\Http\Controllers\Analytics\DashboardController;
 
-use App\Http\Controllers\Management\RestaurantController;
+use App\Http\Controllers\Management\MerchantController;
 use App\Http\Controllers\Management\LocationController;
 use App\Http\Controllers\Api\OfferController;
 use App\Http\Controllers\Api\AIController;
@@ -41,8 +41,9 @@ Route::get('/products/curated', [ProductController::class, 'curated']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/categories', [CategoryController::class, 'index']);
-Route::get('/restaurants', [RestaurantController::class, 'index']);
-Route::get('/restaurants/{id}', [RestaurantController::class, 'showPublic']);
+Route::get('/merchants', [MerchantController::class, 'index']);
+Route::get('/merchants/{id}', [MerchantController::class, 'showPublic']);
+Route::get('/merchants/{id}/reviews', [MerchantController::class, 'reviews']);
 Route::get('/live-offers', [OfferController::class, 'index']);
 Route::post('/live-offers/{id}/click', [OfferController::class, 'recordClick']);
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
@@ -67,9 +68,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Inventory & Asset Management ---
     Route::post('/upload', [UploadController::class, 'store']);
     Route::post('/products', [ProductController::class, 'store']);
+    Route::post('/products/import', [ProductController::class, 'import']);
     Route::put('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+    // Merchant-level review (scoped by product to derive merchant)
     Route::post('/products/{id}/reviews', [ProductController::class, 'addReview']);
+    Route::post('/merchants/{id}/reviews', [MerchantController::class, 'addReview']);
     
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::put('/categories/{id}', [CategoryController::class, 'update']);
@@ -101,10 +105,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Admin Control Plane ---
     Route::middleware('admin')->group(function () {
         Route::post('/admin/generate-offer-image', [AIController::class, 'generateOfferImage']);
-        Route::get('/admin/restaurants', [RestaurantController::class, 'listAll']);
-        Route::post('/admin/merchants', [RestaurantController::class, 'store']);
-        Route::put('/admin/merchants/{id}', [RestaurantController::class, 'adminUpdate']);
-        Route::patch('/admin/restaurants/{id}/toggle', [RestaurantController::class, 'toggleStatus']);
+        Route::get('/admin/merchants', [MerchantController::class, 'listAll']);
+        Route::post('/admin/merchants', [MerchantController::class, 'store']);
+        Route::put('/admin/merchants/{id}', [MerchantController::class, 'adminUpdate']);
+        Route::patch('/admin/merchants/{id}/toggle', [MerchantController::class, 'toggleStatus']);
         Route::get('/admin/users', [AuthController::class, 'listUsers']);
         Route::post('/admin/onboard-rider', [OnboardingController::class, 'adminOnboardRider']);
 
@@ -127,8 +131,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- Merchant Node Control ---
     Route::middleware('merchant')->group(function () {
-        Route::get('/merchant/restaurant', [RestaurantController::class, 'show']);
-        Route::put('/merchant/restaurant', [RestaurantController::class, 'update']);
+        Route::get('/merchant/profile', [MerchantController::class, 'show']);
+        Route::put('/merchant/profile', [MerchantController::class, 'update']);
         Route::post('/merchant/onboard-rider', [OnboardingController::class, 'merchantOnboardRider']);
     });
 
@@ -142,3 +146,4 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/staff', [RiderController::class, 'listStaff']);
     });
 });
+

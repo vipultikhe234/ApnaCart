@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api, { restaurantService } from '../services/api';
+import api, { MerchantService } from '../services/api';
 import { toast } from 'react-hot-toast';
 import {
     Plus,
@@ -28,7 +28,7 @@ import { fetchRealFoodImage, generateAIDescription, generateProductNames } from 
 import { useMerchant } from '../contexts/MerchantContext';
 
 const Products = () => {
-    const { selectedMerchantId, merchants: restaurants } = useMerchant();
+    const { selectedMerchantId, merchants: Merchants } = useMerchant();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -47,9 +47,17 @@ const Products = () => {
         description: '',
         price: '',
         category_id: '',
-        restaurant_id: '',
+        merchant_id: '',
         stock: 0,
         image: null,
+        is_veg: false,
+        spicy_level: 0,
+        calories: '',
+        preparation_time: '',
+        is_popular: false,
+        is_recommended: false,
+        is_new: false,
+        tax_rate: '',
         is_available: true,
         has_variants: false,
         variants: [] // { name, quantity, price, stock }
@@ -72,7 +80,7 @@ const Products = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
+            const query = selectedMerchantId ? `?merchant_id=${selectedMerchantId}` : '';
             const [prodRes, catRes] = await Promise.all([
                 api.get(`/products${query}`),
                 api.get(`/categories${query}`)
@@ -121,7 +129,7 @@ const Products = () => {
         if (!newProduct.name) return toast.error("Enter a name first");
         setImgLoading(true);
         try {
-            const url = await fetchRealFoodImage(newProduct.name, true, newProduct.description);
+            const url = await fetchRealFoodImage(newProduct.name, true, newProduct.description, 'product');
             setNewProduct(prev => ({ ...prev, image: url }));
         } catch (error) {
             console.error("AI Image Generation Error:", error);
@@ -133,7 +141,7 @@ const Products = () => {
     // SYNC NEW PRODUCT WITH SELECTED MERCHANT
     useEffect(() => {
         if (showModal && !editingId && selectedMerchantId) {
-            setNewProduct(prev => ({ ...prev, restaurant_id: selectedMerchantId }));
+            setNewProduct(prev => ({ ...prev, merchant_id: selectedMerchantId }));
         }
     }, [showModal, selectedMerchantId, editingId]);
 
@@ -141,8 +149,8 @@ const Products = () => {
         e.preventDefault();
         try {
             const payload = { ...newProduct };
-            if (selectedMerchantId && !payload.restaurant_id) {
-                payload.restaurant_id = selectedMerchantId;
+            if (selectedMerchantId && !payload.merchant_id) {
+                payload.merchant_id = selectedMerchantId;
             }
 
             // Validation: For variable products, ensure at least one variant exists
@@ -191,9 +199,17 @@ const Products = () => {
             description: prod.description || '',
             price: prod.price,
             category_id: prod.category?.id || prod.category_id,
-            restaurant_id: prod.restaurant_id || '',
+            merchant_id: prod.merchant_id || '',
             stock: prod.stock || 0,
             image: prod.image,
+            is_veg: !!prod.is_veg,
+            spicy_level: prod.spicy_level || 0,
+            calories: prod.calories || '',
+            preparation_time: prod.preparation_time || '',
+            is_popular: !!prod.is_popular,
+            is_recommended: !!prod.is_recommended,
+            is_new: !!prod.is_new,
+            tax_rate: prod.tax_rate || '',
             is_available: !!prod.is_available,
             has_variants: !!prod.has_variants,
             variants: prod.variants || []
@@ -228,6 +244,33 @@ const Products = () => {
         </div>
     );
 
+    const handleBulkUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        if (selectedMerchantId) {
+            formData.append('merchant_id', selectedMerchantId);
+        }
+
+        const toastId = toast.loading("Processing bulk import...");
+        setUploading(true);
+
+        try {
+            await api.post('/products/import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success("Products imported successfully", { id: toastId });
+            fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Import failed. Check file format.", { id: toastId });
+        } finally {
+            setUploading(false);
+            e.target.value = ''; // Reset input
+        }
+    };
+
     return (
         <div className="space-y-6 pb-20 font-sans">
             {/* Header Section */}
@@ -237,10 +280,16 @@ const Products = () => {
                     <p className="text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-2">Inventory Management.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer border border-zinc-200 dark:border-zinc-700 active:scale-95">
+                        <Archive className="w-4 h-4" />
+                        Bulk Upload
+                        <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} />
+                    </label>
+
                     <button
                         onClick={() => {
                             setEditingId(null);
-                            setNewProduct({ ...initialProductState, restaurant_id: selectedMerchantId || '' });
+                            setNewProduct({ ...initialProductState, merchant_id: selectedMerchantId || '' });
                             setShowModal(true);
                         }}
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-black transition-all shadow-xl shadow-emerald-500/20 text-[10px] uppercase tracking-[0.2em] outline-none"
@@ -326,7 +375,10 @@ const Products = () => {
                                                     )}
                                                 </div>
                                                 <div className="min-w-0 pr-4">
-                                                    <p className="font-black text-zinc-900 dark:text-white uppercase tracking-tight text-[13px] mb-1">{prod.name}</p>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <div className={`w-2 h-2 rounded-full ${prod.is_veg ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                                        <p className="font-black text-zinc-900 dark:text-white uppercase tracking-tight text-[13px]">{prod.name}</p>
+                                                    </div>
                                                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest truncate max-w-[200px] ">{prod.description || 'No description'}</p>
                                                 </div>
                                             </div>
@@ -335,7 +387,7 @@ const Products = () => {
                                             <div className="flex items-center gap-2">
                                                 <Store size={14} className="text-emerald-500" />
                                                 <span className="text-[10px] font-black uppercase text-zinc-900 dark:text-zinc-100">
-                                                    {prod.restaurant?.name || 'Global'}
+                                                    {prod.merchant?.name || 'Global'}
                                                 </span>
                                             </div>
                                         </td>
@@ -464,11 +516,11 @@ const Products = () => {
                                                     required
                                                     disabled={isMerchant}
                                                     className={`w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none ${isMerchant ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
-                                                    value={newProduct.restaurant_id}
-                                                    onChange={(e) => setNewProduct({ ...newProduct, restaurant_id: e.target.value })}
+                                                    value={newProduct.merchant_id}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, merchant_id: e.target.value })}
                                                 >
                                                     <option value="" className="dark:bg-zinc-900">Select Partner</option>
-                                                    {restaurants.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{r.name}</option>)}
+                                                    {Merchants.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{r.name}</option>)}
                                                 </select>
                                                 {!isMerchant && <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />}
                                             </div>
@@ -515,19 +567,100 @@ const Products = () => {
                                                 )}
                                             </div>
                                         </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Item Classification (Category)</label>
+                                            <div className="relative">
+                                                <select
+                                                    required
+                                                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer"
+                                                    value={newProduct.category_id}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, category_id: e.target.value })}
+                                                >
+                                                    <option value="" className="dark:bg-zinc-900">Select Category</option>
+                                                    {categories.map(cat => <option key={cat.id} value={cat.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{cat.name}</option>)}
+                                                </select>
+                                                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                                            </div>
+                                        </div>
                                     </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-t border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Dietary Type</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewProduct({ ...newProduct, is_veg: !newProduct.is_veg })}
+                                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 transition-all ${newProduct.is_veg ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500' : 'bg-rose-500/10 text-rose-500 border-rose-500'}`}
+                                        >
+                                            {newProduct.is_veg ? 'VEG' : 'NON-VEG'}
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Spicy Level (0-3)</label>
+                                        <input
+                                            type="number"
+                                            min="0" max="3"
+                                            className="h-10 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black"
+                                            value={newProduct.spicy_level}
+                                            onChange={(e) => setNewProduct({ ...newProduct, spicy_level: parseInt(e.target.value) || 0 })}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Prep Time (Min)</label>
+                                        <input
+                                            type="number"
+                                            className="h-10 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black"
+                                            value={newProduct.preparation_time}
+                                            onChange={(e) => setNewProduct({ ...newProduct, preparation_time: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Calories</label>
+                                        <input
+                                            type="number"
+                                            className="h-10 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-xl px-4 text-[11px] font-black"
+                                            value={newProduct.calories}
+                                            onChange={(e) => setNewProduct({ ...newProduct, calories: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3 py-4 border-t border-zinc-100 dark:border-zinc-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewProduct({ ...newProduct, is_popular: !newProduct.is_popular })}
+                                        className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border-2 transition-all ${newProduct.is_popular ? 'bg-amber-500/10 text-amber-500 border-amber-500' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                    >
+                                        POPULAR
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewProduct({ ...newProduct, is_recommended: !newProduct.is_recommended })}
+                                        className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border-2 transition-all ${newProduct.is_recommended ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                    >
+                                        RECOMMENDED
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewProduct({ ...newProduct, is_new: !newProduct.is_new })}
+                                        className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border-2 transition-all ${newProduct.is_new ? 'bg-blue-500/10 text-blue-500 border-blue-500' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                    >
+                                        NEW ARRIVAL
+                                    </button>
                                 </div>
 
                                 <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <label className="text-[10px] font-black text-zinc-900 dark:text-white uppercase tracking-[0.1em]">Variable Product</label>
-                                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Allow multiple sizes/quantities.</p>
+                                            <label className="text-[10px] font-black text-zinc-900 dark:text-white uppercase tracking-[0.1em]">Variable Item</label>
+                                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Scale options.</p>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => setNewProduct({ ...newProduct, has_variants: !newProduct.has_variants })}
-                                            className={`w-12 h-6 rounded-full relative transition-all ${newProduct.has_variants ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-zinc-200 dark:bg-zinc-800'}`}
+                                            className={`w-12 h-6 rounded-full relative transition-all ${newProduct.has_variants ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-800'}`}
                                         >
                                             <motion.div 
                                                 animate={{ x: newProduct.has_variants ? 26 : 4 }} 
@@ -686,3 +819,4 @@ const Products = () => {
 };
 
 export default Products;
+

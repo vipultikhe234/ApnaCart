@@ -21,13 +21,20 @@ class CouponController extends Controller
     {
         $request->validate([
             'code' => 'required|string',
-            'order_amount' => 'required|numeric'
+            'order_amount' => 'required|numeric',
+            'merchant_id' => 'nullable|exists:Merchants,id'
         ]);
 
-        $coupon = Coupon::where('code', $request->code)
-                        ->where('is_active', true)
-                        ->where('expires_at', '>', Carbon::now())
-                        ->first();
+        $query = Coupon::where('code', $request->code);
+
+        if ($request->merchant_id) {
+            $query->where(function($q) use ($request) {
+                $q->whereNull('merchant_id')
+                  ->orWhere('merchant_id', $request->merchant_id);
+            });
+        }
+
+        $coupon = $query->active()->first();
 
         if (!$coupon) {
             return response()->json(['message' => 'Invalid or expired coupon code'], 404);
@@ -55,8 +62,8 @@ class CouponController extends Controller
 
     public function index(Request $request)
     {
-        $restaurantId = $request->query('restaurant_id');
-        $coupons = Coupon::byRestaurant($restaurantId)->latest()->get();
+        $MerchantId = $request->query('merchant_id');
+        $coupons = Coupon::byMerchant($MerchantId)->latest()->get();
 
         return response()->json([
             'data' => $coupons
@@ -75,8 +82,8 @@ class CouponController extends Controller
         ]);
 
         if ($request->user()->role === 'merchant') {
-            $validated['restaurant_id'] = $request->user()->restaurant?->id;
-            if (!$validated['restaurant_id']) return response()->json(['message' => 'No restaurant context'], 400);
+            $validated['merchant_id'] = $request->user()->merchant?->id;
+            if (!$validated['merchant_id']) return response()->json(['message' => 'No Merchant context'], 400);
         }
 
         $coupon = Coupon::create($validated);
@@ -91,7 +98,7 @@ class CouponController extends Controller
     {
         $coupon = Coupon::findOrFail($id);
 
-        if ($request->user()->role === 'merchant' && $coupon->restaurant_id !== $request->user()->restaurant?->id) {
+        if ($request->user()->role === 'merchant' && $coupon->merchant_id !== $request->user()->merchant?->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -116,7 +123,7 @@ class CouponController extends Controller
     {
         $coupon = Coupon::findOrFail($id);
 
-        if ($request->user()->role === 'merchant' && $coupon->restaurant_id !== $request->user()->restaurant?->id) {
+        if ($request->user()->role === 'merchant' && $coupon->merchant_id !== $request->user()->merchant?->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -128,3 +135,4 @@ class CouponController extends Controller
         return response()->json(['message' => 'Coupon deleted successfully']);
     }
 }
+

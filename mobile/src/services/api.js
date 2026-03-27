@@ -104,13 +104,13 @@ export const productService = {
         bustCache('/products');
         return api.post(`/products/${id}/reviews`, data);
     },
-    getByRestaurant: (restaurantId) => cachedGet(`/restaurants/${restaurantId}/products`, 2 * 60 * 1000),
+    getByMerchant: (MerchantId) => cachedGet(`/Merchants/${MerchantId}/products`, 2 * 60 * 1000),
 };
 
-// ── Restaurant Service ──────────────────────────────────────────────────────
-export const restaurantService = {
-    getAll: () => cachedGet('/restaurants', 5 * 60 * 1000),      // 5 min cache
-    getById: (id) => cachedGet(`/restaurants/${id}`, 5 * 60 * 1000), 
+// ── Merchant Service ──────────────────────────────────────────────────────
+export const MerchantService = {
+    getAll: () => cachedGet('/merchants', 5 * 60 * 1000),      // 5 min cache
+    getById: (id) => cachedGet(`/merchants/${id}`, 5 * 60 * 1000), 
 };
 
 // ── Order Service ──────────────────────────────────────────────────────────
@@ -129,7 +129,8 @@ export const orderService = {
 
 // ── Coupon Service ─────────────────────────────────────────────────────────
 export const couponService = {
-    validate: (code, amount) => api.post('/coupons/validate', { code, order_amount: amount }),
+    validate: (code, amount, MerchantId = null) => 
+        api.post('/coupons/validate', { code, order_amount: amount, merchant_id: MerchantId }),
 };
 
 // ── Address Service ────────────────────────────────────────────────────────
@@ -165,3 +166,4 @@ export const riderService = {
 };
 
 export default api;
+

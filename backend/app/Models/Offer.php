@@ -10,36 +10,41 @@ class Offer extends Model
     use HasFactory;
 
     protected $fillable = [
-        'restaurant_id',
+        'merchant_id',
         'category_id',
         'product_id',
         'title',
         'description',
+        'type',
+        'image',
         'banner_url',
+        'value',
         'discount_type',
         'discount_value',
+        'priority',
+        'usage_count',
+        'starts_at',
+        'expires_at',
         'start_date',
         'end_date',
-        'priority',
-        'is_active',
-        'usage_count'
+        'is_active'
     ];
 
     protected $casts = [
+        'starts_at' => 'datetime',
+        'expires_at' => 'datetime',
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_active' => 'boolean',
+        'value' => 'decimal:2',
         'discount_value' => 'decimal:2',
+        'priority' => 'integer',
+        'usage_count' => 'integer'
     ];
 
-    public function restaurant()
+    public function merchant()
     {
-        return $this->belongsTo(Restaurant::class);
-    }
-
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Merchant::class);
     }
 
     public function product()
@@ -47,16 +52,16 @@ class Offer extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Scope a query to only include active offers.
+     */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true)
-                     ->where(function ($q) {
-                         $q->whereNull('start_date')
-                           ->orWhere('start_date', '<=', now());
-                     })
-                     ->where(function ($q) {
-                         $q->whereNull('end_date')
-                           ->orWhere('end_date', '>=', now());
-                     });
+        return $query->where('is_active', true);
     }
 }

@@ -21,7 +21,7 @@ class ProductResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'restaurant_id' => $this->restaurant_id,
+            'merchant_id' => $this->merchant_id,
             'name' => $this->name,
             'description' => $this->description,
             'has_variants' => (bool) $this->has_variants,
@@ -38,7 +38,7 @@ class ProductResource extends JsonResource
             'stock' => (int) $this->stock,
             'is_available' => (bool) $this->is_available,
             'category' => new CategoryResource($this->whenLoaded('category')),
-            'restaurant' => $this->whenLoaded('restaurant'),
+            'merchant' => $this->whenLoaded('merchant'),
             'variants' => ProductVariantResource::collection($this->whenLoaded('variants')),
             'reviews' => ReviewResource::collection($this->whenLoaded('reviews')),
             'avg_rating' => (float) ($this->reviews->avg('rating') ?? 4.5), 
@@ -47,3 +47,4 @@ class ProductResource extends JsonResource
         ];
     }
 }
+

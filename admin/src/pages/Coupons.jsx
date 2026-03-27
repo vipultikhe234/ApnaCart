@@ -39,7 +39,7 @@ const Coupons = () => {
         min_order_amount: 0,
         expires_at: '',
         is_active: true,
-        restaurant_id: selectedMerchantId || ''
+        merchant_id: selectedMerchantId || ''
     };
 
     const [form, setForm] = useState(initialFormState);
@@ -51,7 +51,7 @@ const Coupons = () => {
     const fetchCoupons = async () => {
         try {
             setLoading(true);
-            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
+            const query = selectedMerchantId ? `?merchant_id=${selectedMerchantId}` : '';
             const res = await api.get(`/coupons${query}`);
             setCoupons(res.data.data || []);
         } catch (error) {
@@ -65,8 +65,8 @@ const Coupons = () => {
         e.preventDefault();
         try {
             const payload = { ...form };
-            if (selectedMerchantId && !payload.restaurant_id) {
-                payload.restaurant_id = selectedMerchantId;
+            if (selectedMerchantId && !payload.merchant_id) {
+                payload.merchant_id = selectedMerchantId;
             }
 
             if (editingId) {
@@ -334,3 +334,4 @@ const Coupons = () => {
 };
 
 export default Coupons;
+

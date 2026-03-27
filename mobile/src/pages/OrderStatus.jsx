@@ -201,7 +201,7 @@ const OrderStatus = () => {
                             {order.order_type === 'pickup' ? 'Store Pickup Location' : 'Delivery Address'}
                         </p>
                         <p className="font-semibold text-zinc-900 dark:text-white text-sm leading-relaxed">
-                            {order.order_type === 'pickup' ? (order.restaurant?.address || 'Self Pickup from Store') : (order.address || 'Standard Location')}
+                            {order.order_type === 'pickup' ? (order.Merchant?.address || 'Self Pickup from Store') : (order.address || 'Standard Location')}
                         </p>
                     </div>
                 </div>
@@ -253,3 +253,4 @@ const OrderStatus = () => {
 };
 
 export default OrderStatus;
+

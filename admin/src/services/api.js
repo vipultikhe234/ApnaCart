@@ -49,8 +49,8 @@ export const authService = {
 };
 
 export const productService = {
-    getAll: (restaurantId = null) => api.get('/products', { params: { restaurant_id: restaurantId } }),
-    getCategories: (restaurantId = null) => api.get('/categories', { params: { restaurant_id: restaurantId } }),
+    getAll: (MerchantId = null) => api.get('/products', { params: { merchant_id: MerchantId } }),
+    getCategories: (MerchantId = null) => api.get('/categories', { params: { merchant_id: MerchantId } }),
     getById: (id) => api.get(`/products/${id}`),
     create: (data) => api.post('/products', data),
     update: (id, data) => api.put(`/products/${id}`, data),
@@ -61,7 +61,7 @@ export const productService = {
 };
 
 export const categoryService = {
-    getAll: (restaurantId = null) => api.get('/categories', { params: { restaurant_id: restaurantId } }),
+    getAll: (MerchantId = null) => api.get('/categories', { params: { merchant_id: MerchantId } }),
     create: (data) => api.post('/categories', data),
     update: (id, data) => api.put(`/categories/${id}`, data),
     delete: (id) => api.delete(`/categories/${id}`),
@@ -70,27 +70,27 @@ export const categoryService = {
 export const orderService = {
     getUserOrders: () => api.get('/orders'),
     getOrder: (id) => api.get(`/orders/${id}`),
-    getAllOrders: (restaurantId = null) => api.get('/orders', { params: { restaurant_id: restaurantId } }),
-    getStats: (restaurantId = null) => api.get('/stats', { params: { restaurant_id: restaurantId } }), 
+    getAllOrders: (MerchantId = null) => api.get('/orders', { params: { merchant_id: MerchantId } }),
+    getStats: (MerchantId = null) => api.get('/stats', { params: { merchant_id: MerchantId } }), 
     updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
     updatePaymentStatus: (id, status) => api.patch(`/orders/${id}/payment-status`, { status }),
     initiatePayment: (id) => api.post(`/orders/${id}/initiate-payment`),
 };
 
 export const couponService = {
-    getAll: (restaurantId = null) => api.get('/coupons', { params: { restaurant_id: restaurantId } }),
+    getAll: (MerchantId = null) => api.get('/coupons', { params: { merchant_id: MerchantId } }),
     create: (data) => api.post('/coupons', data),
     update: (id, data) => api.put(`/coupons/${id}`, data),
     delete: (id) => api.delete(`/coupons/${id}`),
 };
 
-export const restaurantService = {
-    listAll: () => api.get('/admin/restaurants'), // Admin view
+export const MerchantService = {
+    listAll: () => api.get('/admin/merchants'), // Admin view
     createMerchant: (data) => api.post('/admin/merchants', data), // Admin action
     updateMerchant: (id, data) => api.put(`/admin/merchants/${id}`, data), // Admin update
-    getProfile: () => api.get('/merchant/restaurant'), // Merchant view their own
-    updateProfile: (data) => api.put('/merchant/restaurant', data),
-    toggleStatus: (id) => api.patch(`/admin/restaurants/${id}/toggle`), 
+    getProfile: () => api.get('/merchant/profile'), // Merchant view their own
+    updateProfile: (data) => api.put('/merchant/profile', data),
+    toggleStatus: (id) => api.patch(`/admin/merchants/${id}/toggle`), 
 };
 
 // Public cascading dropdown endpoints (no auth needed)
@@ -120,3 +120,4 @@ export const locationService = {
 };
 
 export default api;
+

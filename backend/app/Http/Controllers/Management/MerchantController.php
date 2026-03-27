@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
-use App\Models\Restaurant;
+use App\Models\Merchant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-class RestaurantController extends Controller
+class MerchantController extends Controller
 {
     /**
-     * List all active restaurants (Public API).
+     * List all active Merchants (Public API).
      */
     public function index(Request $request)
     {
-        $query = Restaurant::with(['city.state.country', 'otherCharges'])
+        $query = Merchant::with(['city.state.country', 'otherCharges'])
             ->where('is_active', true);
 
         if ($request->has('city_id')) {
@@ -27,40 +27,40 @@ class RestaurantController extends Controller
     }
 
     /**
-     * Get a public restaurant profile (Public API).
+     * Get a public Merchant profile (Public API).
      */
     public function showPublic($id)
     {
-        $restaurant = Restaurant::with(['city.state.country', 'otherCharges'])
+        $Merchant = Merchant::with(['city.state.country', 'otherCharges'])
             ->where('is_active', true)
             ->findOrFail($id);
 
-        return response()->json(['data' => $restaurant]);
+        return response()->json(['data' => $Merchant]);
     }
 
     /**
-     * Get the merchant's restaurant profile.
+     * Get the merchant's Merchant profile.
      */
     public function show(Request $request)
     {
-        $restaurant = $request->user()->restaurant()->with(['merchant', 'otherCharges'])->first();
+        $merchant = $request->user()->merchant()->with(['user', 'otherCharges'])->first();
         
-        if (!$restaurant) {
+        if (!$merchant) {
             return response()->json(['message' => 'No merchant node found for this identity.'], 404);
         }
 
-        return response()->json(['data' => $restaurant]);
+        return response()->json(['data' => $merchant]);
     }
 
     /**
-     * Update the restaurant profile.
+     * Update the Merchant profile.
      */
     public function update(Request $request)
     {
-        $restaurant = $request->user()->restaurant;
+        $merchant = $request->user()->merchant;
 
-        if (!$restaurant) {
-            return response()->json(['message' => 'No restaurant context identified.'], 404);
+        if (!$merchant) {
+            return response()->json(['message' => 'No Merchant context identified.'], 404);
         }
 
         $validated = $request->validate([
@@ -92,8 +92,8 @@ class RestaurantController extends Controller
             $validated['is_open'] = filter_var($validated['is_open'], FILTER_VALIDATE_BOOLEAN);
         }
 
-        DB::transaction(function () use ($restaurant, $validated, $request) {
-            $restaurant->update($validated);
+        DB::transaction(function () use ($merchant, $validated, $request) {
+            $merchant->update($validated);
 
             // Update or Create charges
             $chargeData = $request->only([
@@ -103,8 +103,8 @@ class RestaurantController extends Controller
             ]);
 
             if (!empty($chargeData)) {
-                $restaurant->otherCharges()->updateOrCreate(
-                    ['merchant_id' => $restaurant->id],
+                $merchant->otherCharges()->updateOrCreate(
+                    ['merchant_id' => $merchant->id],
                     $chargeData
                 );
             }
@@ -112,12 +112,12 @@ class RestaurantController extends Controller
 
         return response()->json([
             'message' => 'Merchant profile synchronized successfully.',
-            'data'    => $restaurant->load(['city.state.country', 'otherCharges'])
+            'data'    => $merchant->load(['city.state.country', 'otherCharges'])
         ]);
     }
 
     /**
-     * Store a newly created merchant and restaurant (Super Admin only).
+     * Store a newly created merchant and Merchant (Super Admin only).
      */
     public function store(Request $request)
     {
@@ -125,7 +125,7 @@ class RestaurantController extends Controller
             'merchant_name'   => 'required|string|max:255',
             'email'           => 'required|email|unique:users,email',
             'password'        => 'required|string|min:6',
-            'restaurant_name' => 'required|string|max:255',
+            'Merchant_name' => 'required|string|max:255',
             'address'         => 'required|string',
             'country_id'      => 'nullable|exists:countries,id',
             'state_id'        => 'nullable|exists:states,id',
@@ -150,10 +150,10 @@ class RestaurantController extends Controller
                 'role'     => 'merchant',
             ]);
 
-            // 2. Create the restaurant node
-            $restaurant = Restaurant::create([
-                'merchant_id'  => $user->id,
-                'name'         => $validated['restaurant_name'],
+            // 2. Create the Merchant node
+            $merchant = Merchant::create([
+                'user_id'  => $user->id,
+                'name'         => $validated['Merchant_name'],
                 'address'      => $validated['address'],
                 'country_id'   => $validated['country_id'] ?? null,
                 'state_id'     => $validated['state_id'] ?? null,
@@ -165,7 +165,7 @@ class RestaurantController extends Controller
             ]);
 
             // 3. Create initial charges
-            $restaurant->otherCharges()->create([
+            $merchant->otherCharges()->create([
                 'delivery_charge'       => $validated['delivery_charge'] ?? 20.00,
                 'packaging_charge'      => $validated['packaging_charge'] ?? 10.00,
                 'platform_fee'          => $validated['platform_fee'] ?? 5.00,
@@ -176,23 +176,23 @@ class RestaurantController extends Controller
 
             return response()->json([
                 'message'    => 'Merchant ecosystem provisioned successfully.',
-                'restaurant' => $restaurant->load(['merchant', 'city.state.country', 'otherCharges'])
+                'merchant' => $merchant->load(['user', 'city.state.country', 'otherCharges'])
             ], 201);
         });
     }
 
     /**
-     * Update an existing merchant and restaurant (Super Admin only).
+     * Update an existing merchant and Merchant (Super Admin only).
      */
     public function adminUpdate(Request $request, $id)
     {
-        $restaurant = Restaurant::findOrFail($id);
+        $merchant = Merchant::findOrFail($id);
         
         $validated = $request->validate([
             'merchant_name'   => 'sometimes|string|max:255',
-            'email'           => 'sometimes|email|unique:users,email,' . $restaurant->merchant_id,
+            'email'           => 'sometimes|email|unique:users,email,' . $merchant->user_id,
             'password'        => 'sometimes|nullable|string|min:6',
-            'restaurant_name' => 'sometimes|string|max:255',
+            'Merchant_name' => 'sometimes|string|max:255',
             'address'         => 'sometimes|string',
             'country_id'      => 'nullable|exists:countries,id',
             'state_id'        => 'nullable|exists:states,id',
@@ -213,7 +213,7 @@ class RestaurantController extends Controller
             'max_delivery_distance' => 'nullable|numeric',
         ]);
 
-        return DB::transaction(function () use ($validated, $restaurant, $request) {
+        return DB::transaction(function () use ($validated, $merchant, $request) {
             // Update User
             $userData = [];
             if (isset($validated['merchant_name'])) $userData['name'] = $validated['merchant_name'];
@@ -221,12 +221,12 @@ class RestaurantController extends Controller
             if (!empty($validated['password'])) $userData['password'] = Hash::make($validated['password']);
             
             if (!empty($userData)) {
-                $restaurant->merchant->update($userData);
+                $merchant->user->update($userData);
             }
 
             // Update Merchant Node
             $restData = [];
-            if (isset($validated['restaurant_name'])) $restData['name'] = $validated['restaurant_name'];
+            if (isset($validated['Merchant_name'])) $restData['name'] = $validated['Merchant_name'];
             if (isset($validated['address'])) $restData['address'] = $validated['address'];
             if (array_key_exists('country_id', $validated)) $restData['country_id'] = $validated['country_id'];
             if (array_key_exists('state_id', $validated)) $restData['state_id'] = $validated['state_id'];
@@ -237,7 +237,7 @@ class RestaurantController extends Controller
             if (isset($validated['latitude'])) $restData['latitude'] = $validated['latitude'];
             if (isset($validated['longitude'])) $restData['longitude'] = $validated['longitude'];
             
-            $restaurant->update($restData);
+            $merchant->update($restData);
 
             // Update Charges
             $chargeData = $request->only([
@@ -247,39 +247,114 @@ class RestaurantController extends Controller
             ]);
 
             if (!empty($chargeData)) {
-                $restaurant->otherCharges()->updateOrCreate(
-                    ['merchant_id' => $restaurant->id],
+                $merchant->otherCharges()->updateOrCreate(
+                    ['merchant_id' => $merchant->id],
                     $chargeData
                 );
             }
 
             return response()->json([
                 'message'    => 'Merchant ecosystem updated successfully.',
-                'restaurant' => $restaurant->load(['merchant', 'city.state.country', 'otherCharges'])
+                'merchant' => $merchant->load(['user', 'city.state.country', 'otherCharges'])
             ]);
         });
     }
 
     /**
-     * List all restaurants (Super Admin only).
+     * List all Merchants (Super Admin only).
      */
     public function listAll()
     {
-        return response()->json(['data' => Restaurant::with(['merchant', 'city.state.country', 'otherCharges'])->latest()->get()]);
+        return response()->json(['data' => Merchant::with(['user', 'city.state.country', 'otherCharges'])->latest()->get()]);
     }
 
     /**
-     * Toggle restaurant active status (Super Admin).
+     * Toggle Merchant active status (Super Admin).
      */
     public function toggleStatus($id)
     {
-        $restaurant = Restaurant::findOrFail($id);
-        $restaurant->is_active = !$restaurant->is_active;
-        $restaurant->save();
+        $merchant = Merchant::findOrFail($id);
+        $merchant->is_active = !$merchant->is_active;
+        $merchant->save();
 
         return response()->json([
             'message'   => 'Node status toggled successfully.',
-            'is_active' => $restaurant->is_active
+            'is_active' => $merchant->is_active
         ]);
     }
+
+    /**
+     * Get paginated reviews for a merchant (Public).
+     */
+    public function reviews($id)
+    {
+        $reviews = \App\Models\Review::with('user')
+            ->where('merchant_id', $id)
+            ->latest()
+            ->paginate(15);
+
+        // Calculate average rating
+        $avgRating = \App\Models\Review::where('merchant_id', $id)->avg('rating');
+        $totalReviews = \App\Models\Review::where('merchant_id', $id)->count();
+
+        return response()->json([
+            'data'         => \App\Http\Resources\ReviewResource::collection($reviews),
+            'avg_rating'   => round((float) $avgRating, 1),
+            'total_reviews'=> $totalReviews,
+            'meta'         => [
+                'current_page' => $reviews->currentPage(),
+                'last_page'    => $reviews->lastPage(),
+                'per_page'     => $reviews->perPage(),
+                'total'        => $reviews->total(),
+            ]
+        ]);
+    }
+
+    /**
+     * Submit a review for a merchant (Authenticated user with delivered order).
+     */
+    public function addReview(Request $request, $id)
+    {
+        $request->validate([
+            'order_id' => 'required|integer|exists:orders,id',
+            'rating'   => 'required|integer|min:1|max:5',
+            'review'   => 'nullable|string|max:1000',
+        ]);
+
+        // Verify order: belongs to user, belongs to merchant, and is delivered
+        $order = \App\Models\Order::where('id', $request->order_id)
+            ->where('user_id', $request->user()->id)
+            ->where('merchant_id', $id)
+            ->where('status', 'delivered')
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'You can only review a merchant after a delivered order.'
+            ], 403);
+        }
+
+        // Prevent duplicate review for same order
+        $existing = \App\Models\Review::where('user_id', $request->user()->id)
+            ->where('order_id', $order->id)
+            ->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'You have already reviewed this order.'], 409);
+        }
+
+        $review = \App\Models\Review::create([
+            'user_id'     => $request->user()->id,
+            'merchant_id' => $id,
+            'order_id'    => $order->id,
+            'rating'      => $request->rating,
+            'review'      => $request->review,
+        ]);
+
+        return response()->json([
+            'message' => 'Review submitted successfully.',
+            'data'    => new \App\Http\Resources\ReviewResource($review->load('user')),
+        ], 201);
+    }
 }
+

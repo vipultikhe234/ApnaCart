@@ -20,7 +20,7 @@ class RiderService
         return Order::where('status', Order::STATUS_READY)
             ->whereNull('rider_id')
             ->where('order_type', Order::TYPE_DELIVERY)
-            ->with(['restaurant', 'user'])
+            ->with(['Merchant', 'user'])
             ->get();
     }
 
@@ -113,8 +113,9 @@ class RiderService
     {
         return Order::where('rider_id', $riderId)
             ->whereIn('status', [Order::STATUS_DELIVERED, Order::STATUS_CANCELLED])
-            ->with(['restaurant', 'user'])
+            ->with(['Merchant', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
 }
+

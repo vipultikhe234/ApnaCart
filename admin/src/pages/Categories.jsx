@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api, { productService, restaurantService } from '../services/api';
+import api, { productService, MerchantService } from '../services/api';
 import { fetchRealFoodImage } from '../utils/aiHelpers';
 import {
     X,
@@ -25,7 +25,7 @@ import { toast } from 'react-hot-toast';
 import { useMerchant } from '../contexts/MerchantContext';
 
 const Categories = () => {
-    const { selectedMerchantId, merchants: restaurants } = useMerchant();
+    const { selectedMerchantId, merchants: Merchants } = useMerchant();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -39,13 +39,13 @@ const Categories = () => {
     const isMerchant = user.role === 'merchant' || user.role === 'Merchant';
 
     const [newCategory, setNewCategory] = useState({
-        name: '', image: '', image_url: '', status: true, restaurant_id: ''
+        name: '', image: '', image_url: '', status: true, merchant_id: ''
     });
 
     // SYNC NEW CATEGORY WITH SELECTED MERCHANT
     useEffect(() => {
         if (showModal && !editingId && selectedMerchantId) {
-            setNewCategory(prev => ({ ...prev, restaurant_id: selectedMerchantId }));
+            setNewCategory(prev => ({ ...prev, merchant_id: selectedMerchantId }));
         }
     }, [showModal, selectedMerchantId, editingId]);
 
@@ -56,7 +56,7 @@ const Categories = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
+            const query = selectedMerchantId ? `?merchant_id=${selectedMerchantId}` : '';
             const res = await api.get(`/categories${query}`);
             const data = res.data.data || res.data || [];
             setCategories(Array.isArray(data) ? data : []);
@@ -80,7 +80,7 @@ const Categories = () => {
         }
         setImgLoading(true);
         debounceRef.current = setTimeout(async () => {
-            const url = await fetchRealFoodImage(name);
+            const url = await fetchRealFoodImage(name, false, '', 'category');
             setNewCategory(prev => ({ ...prev, image: url, image_url: url }));
             setImgLoading(false);
         }, 1500);
@@ -89,7 +89,7 @@ const Categories = () => {
     const handleRetryImage = async () => {
         if (!newCategory.name.trim()) return;
         setImgLoading(true);
-        const url = await fetchRealFoodImage(newCategory.name, true);
+        const url = await fetchRealFoodImage(newCategory.name, true, '', 'category');
         setNewCategory(prev => ({ ...prev, image: url, image_url: url }));
         setImgLoading(false);
     };
@@ -125,7 +125,7 @@ const Categories = () => {
             image: cat.image || '',
             image_url: cat.image ? (cat.image.startsWith('http') ? cat.image : `${baseUrl}/storage/${cat.image}`) : '',
             status: cat.status ?? true,
-            restaurant_id: cat.restaurant_id || ''
+            merchant_id: cat.merchant_id || ''
         });
         setShowModal(true);
     };
@@ -138,11 +138,11 @@ const Categories = () => {
                 name: newCategory.name, 
                 image: newCategory.image, 
                 status: newCategory.status,
-                restaurant_id: newCategory.restaurant_id
+                merchant_id: newCategory.merchant_id
             };
             
-            if (selectedMerchantId && !payload.restaurant_id) {
-                payload.restaurant_id = selectedMerchantId;
+            if (selectedMerchantId && !payload.merchant_id) {
+                payload.merchant_id = selectedMerchantId;
             }
 
             if (editingId) await api.put(`/categories/${editingId}`, payload);
@@ -151,7 +151,7 @@ const Categories = () => {
             setShowModal(false);
             setEditingId(null);
             fetchData();
-            setNewCategory({ name: '', image: '', image_url: '', status: true, restaurant_id: '' });
+            setNewCategory({ name: '', image: '', image_url: '', status: true, merchant_id: '' });
             toast.success(editingId ? "Category updated successfully" : "Category created successfully");
         } catch (err) {
             toast.error(`Error saving category.`);
@@ -174,13 +174,13 @@ const Categories = () => {
     const resetModal = () => {
         setShowModal(false);
         setEditingId(null);
-        setNewCategory({ name: '', image: '', image_url: '', status: true, restaurant_id: '' });
+        setNewCategory({ name: '', image: '', image_url: '', status: true, merchant_id: '' });
         setImgLoading(false);
         clearTimeout(debounceRef.current);
     };
 
     const getMerchantName = (id) => {
-        const merchant = restaurants?.find(r => String(r.id) === String(id));
+        const merchant = Merchants?.find(r => String(r.id) === String(id));
         return merchant ? merchant.name : 'Select Merchant';
     };
 
@@ -205,7 +205,7 @@ const Categories = () => {
                     <button
                         onClick={() => {
                             setEditingId(null);
-                            setNewCategory({ name: '', image: '', image_url: '', status: true, restaurant_id: selectedMerchantId || '' });
+                            setNewCategory({ name: '', image: '', image_url: '', status: true, merchant_id: selectedMerchantId || '' });
                             setShowModal(true);
                         }}
                         className="bg-emerald-500 text-white px-6 py-4 rounded-2xl flex items-center gap-3 font-black transition-all shadow-xl shadow-emerald-500/20 text-[10px] uppercase tracking-[0.2em] outline-none"
@@ -263,7 +263,7 @@ const Categories = () => {
                                 <div className="absolute top-6 right-6 flex items-center gap-2">
                                      <div className="h-10 px-3 bg-white/20 backdrop-blur-xl rounded-xl flex items-center gap-2 border border-white/10 text-white shadow-xl">
                                         <Store size={14} className="text-emerald-400" />
-                                        <span className="text-[10px] font-black uppercase tracking-tight">{cat.restaurant?.name || 'Global'}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-tight">{cat.merchant?.name || 'Global'}</span>
                                      </div>
                                 </div>
                             </div>
@@ -327,11 +327,11 @@ const Categories = () => {
                                             required
                                             disabled={isMerchant}
                                             className={`w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-xl px-5 text-[10px] font-black uppercase text-zinc-900 dark:text-white outline-none focus:border-emerald-500 transition-all appearance-none ${isMerchant ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
-                                            value={newCategory.restaurant_id}
-                                            onChange={(e) => setNewCategory({ ...newCategory, restaurant_id: e.target.value })}
+                                            value={newCategory.merchant_id}
+                                            onChange={(e) => setNewCategory({ ...newCategory, merchant_id: e.target.value })}
                                         >
-                                            <option value="" className="dark:bg-zinc-900">Select Restaurant</option>
-                                            {restaurants.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{r.name}</option>)}
+                                            <option value="" className="dark:bg-zinc-900">Select Merchant</option>
+                                            {Merchants.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-zinc-900 text-black dark:text-white">{r.name}</option>)}
                                         </select>
                                         {!isMerchant && <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />}
                                     </div>
@@ -413,3 +413,4 @@ const Categories = () => {
 };
 
 export default Categories;
+

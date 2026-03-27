@@ -5,14 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Country;
-use App\Models\State;
-use App\Models\City;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class Restaurant extends Model
+class Merchant extends Model
 {
     protected $fillable = [
-        'merchant_id',
+        'user_id',
         'name',
         'description',
         'address',
@@ -27,9 +25,9 @@ class Restaurant extends Model
         'rating',
     ];
 
-    public function merchant(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'merchant_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function country(): BelongsTo
@@ -62,7 +60,7 @@ class Restaurant extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function otherCharges()
+    public function otherCharges(): HasOne
     {
         return $this->hasOne(MerchantOtherCharge::class, 'merchant_id');
     }

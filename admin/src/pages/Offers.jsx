@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 
 import { useMerchant } from '../contexts/MerchantContext';
+import { fetchRealFoodImage } from '../utils/aiHelpers';
 
 const Offers = () => {
     const { selectedMerchantId } = useMerchant();
@@ -37,6 +38,7 @@ const Offers = () => {
     const [editingId, setEditingId] = useState(null);
     const [categories, setCategories] = useState([]);
     const [products, setProducts] = useState([]);
+    const [merchants, setMerchants] = useState([]);
     const [generating, setGenerating] = useState(false);
 
     const initialFormState = {
@@ -49,7 +51,7 @@ const Offers = () => {
         end_date: '',
         priority: 0,
         is_active: true,
-        restaurant_id: selectedMerchantId || '',
+        merchant_id: selectedMerchantId || '',
         category_id: '',
         product_id: ''
     };
@@ -60,11 +62,11 @@ const Offers = () => {
         if (!form.title) return toast.error("Enter a title first");
         try {
             setGenerating(true);
-            const res = await api.post('/admin/generate-offer-image', { prompt: form.title });
-            setForm({ ...form, banner_url: res.data.image_url });
-            toast.success("AI Visual Refined!");
+            const url = await fetchRealFoodImage(form.title, true, form.description, 'offer');
+            setForm({ ...form, banner_url: url });
+            toast.success("AI Promo Visual Refined!");
         } catch (error) {
-            toast.error("AI Engine Offline");
+            toast.error("AI Generation Error");
         } finally {
             setGenerating(false);
         }
@@ -73,12 +75,22 @@ const Offers = () => {
     useEffect(() => {
         fetchOffers();
         fetchMeta();
+        if (!selectedMerchantId) fetchMerchants(); 
     }, [selectedMerchantId]);
+
+    const fetchMerchants = async () => {
+        try {
+            const res = await api.get('/admin/merchants');
+            setMerchants(res.data.data || []);
+        } catch (error) {
+            console.error("Error fetching merchants:", error);
+        }
+    };
 
     const fetchOffers = async () => {
         try {
             setLoading(true);
-            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
+            const query = selectedMerchantId ? `?merchant_id=${selectedMerchantId}` : '';
             const res = await api.get(`/offers${query}`);
             setOffers(res.data.data || []);
         } catch (error) {
@@ -90,15 +102,24 @@ const Offers = () => {
 
     const fetchMeta = async () => {
         try {
-            const query = selectedMerchantId ? `?restaurant_id=${selectedMerchantId}` : '';
+            // Fetch everything globally if no merchant selected, otherwise scope it
+            const query = selectedMerchantId ? `?merchant_id=${selectedMerchantId}` : '';
             const [catRes, prodRes] = await Promise.all([
                 api.get(`/categories${query}`),
                 api.get(`/products${query}`)
             ]);
+            
             setCategories(catRes.data.data || []);
             setProducts(prodRes.data.data || []);
+            
+            // For admins in global view, we need the merchant list for assignment
+            if (!selectedMerchantId) {
+                const mercRes = await api.get('/admin/merchants');
+                setMerchants(mercRes.data.data || []);
+            }
         } catch (error) {
             console.error("Error fetching meta data:", error);
+            toast.error("Failed to sync marketplace data.");
         }
     };
 
@@ -106,8 +127,8 @@ const Offers = () => {
         e.preventDefault();
         try {
             const payload = { ...form };
-            if (selectedMerchantId && !payload.restaurant_id) {
-                payload.restaurant_id = selectedMerchantId;
+            if (selectedMerchantId && !payload.merchant_id) {
+                payload.merchant_id = selectedMerchantId;
             }
 
             if (editingId) {
@@ -219,7 +240,7 @@ const Offers = () => {
                             <div>
                                 <h3 className="text-base font-bold text-zinc-900 dark:text-white truncate">{offer.title}</h3>
                                 <p className="text-[10px] font-bold text-zinc-400 mt-1 flex items-center gap-1.5 uppercase tracking-wide">
-                                    <Store size={10} /> {offer.restaurant?.name || 'Global'}
+                                    <Store size={10} /> {offer.Merchant?.name || 'Global'}
                                 </p>
                             </div>
 
@@ -307,6 +328,19 @@ const Offers = () => {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {!selectedMerchantId && (
+                                                <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500">
+                                                    <label className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] block">Assign to Merchant</label>
+                                                    <div className="relative">
+                                                        <select required className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-zinc-900 border-2 border-rose-500/20 dark:border-rose-500/10 rounded-2xl outline-none focus:border-rose-500 transition-colors dark:text-white font-bold text-[10px] uppercase appearance-none shadow-sm" value={form.merchant_id} onChange={(e) => setForm({ ...form, merchant_id: e.target.value })}>
+                                                            <option value="">Select Target Merchant</option>
+                                                            {merchants.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                                        </select>
+                                                        <Store size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-rose-500" />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800">
@@ -334,7 +368,7 @@ const Offers = () => {
                                                 <div className="relative">
                                                     <select className="w-full pl-12 pr-5 py-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none focus:border-emerald-500 transition-colors dark:text-white font-bold text-[10px] uppercase appearance-none shadow-sm" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value, product_id: '' })}>
                                                         <option value="">Global / Select Category</option>
-                                                        {categories.map(c => <option key={c.id} value={c.id}>{c.name} {!selectedMerchantId && `(${c.restaurant?.name || 'Global'})`}</option>)}
+                                                        {categories.map(c => <option key={c.id} value={c.id}>{c.name} {!selectedMerchantId && `(${c.merchant?.name || 'Global'})`}</option>)}
                                                     </select>
                                                     <LayoutGrid size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400" />
                                                 </div>
@@ -396,3 +430,4 @@ const Offers = () => {
 };
 
 export default Offers;
+

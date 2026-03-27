@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { restaurantService } from '../services/api';
+import { MerchantService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ChevronLeft, 
@@ -15,7 +15,7 @@ import {
 
 const AllMerchants = () => {
     const navigate = useNavigate();
-    const [restaurants, setRestaurants] = useState([]);
+    const [Merchants, setMerchants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('all'); // all, rating, nearby
@@ -23,8 +23,8 @@ const AllMerchants = () => {
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                const res = await restaurantService.list();
-                setRestaurants(res.data.data);
+                const res = await MerchantService.list();
+                setMerchants(res.data.data);
             } catch (e) {
                 console.error("Failed to fetch merchants", e);
             } finally {
@@ -34,7 +34,7 @@ const AllMerchants = () => {
         fetchAll();
     }, []);
 
-    const filtered = restaurants.filter(r => 
+    const filtered = Merchants.filter(r => 
         r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.address?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -67,7 +67,7 @@ const AllMerchants = () => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" size={18} />
                     <input 
                         type="text" 
-                        placeholder="Search our restaurant network..."
+                        placeholder="Search our Merchant network..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full h-12 bg-zinc-900 border border-zinc-800 rounded-2xl pl-12 pr-4 text-sm font-medium focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-zinc-600"
@@ -119,7 +119,7 @@ const AllMerchants = () => {
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     transition={{ delay: idx * 0.05 }}
                                     key={merchant.id}
-                                    onClick={() => navigate(`/restaurant/${merchant.id}`)}
+                                    onClick={() => navigate(`/Merchant/${merchant.id}`)}
                                     className="group relative bg-white dark:bg-zinc-900 rounded-[32px] overflow-hidden border border-zinc-100 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all"
                                 >
                                     <div className="p-4 flex gap-4">
@@ -185,3 +185,4 @@ const AllMerchants = () => {
 };
 
 export default AllMerchants;
+

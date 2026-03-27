@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { orderService, restaurantService } from '../services/api';
+import { orderService, MerchantService } from '../services/api';
 import { 
     Package, 
     Clock, 
@@ -41,12 +41,12 @@ const MerchantDashboard = () => {
         try {
             setLoading(true);
             // In a real app, we'd have a specific /merchant/dashboard endpoint
-            // For now, we filter platform orders by the merchant's restaurant ID
+            // For now, we filter platform orders by the merchant's Merchant ID
             const response = await orderService.getAllOrders();
             const allOrders = response.data.data || [];
             
-            // Assume user.restaurant_id exists for merchants
-            const merchantOrders = allOrders.filter(o => o.restaurant_id === user?.restaurant_id);
+            // Assume user.merchant.id exists for merchants (lowercase relationship)
+            const merchantOrders = allOrders.filter(o => o.merchant_id === user?.merchant?.id);
             setOrders(merchantOrders);
 
             // Calculate basic stats
@@ -254,3 +254,4 @@ const MerchantDashboard = () => {
 };
 
 export default MerchantDashboard;
+

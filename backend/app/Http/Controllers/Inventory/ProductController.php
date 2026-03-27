@@ -24,7 +24,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $role = $request->user('sanctum')?->role ?? 'guest';
-        $targetId = $request->query('restaurant_id');
+        $targetId = $request->query('merchant_id');
 
         // Multidimensional Cache Key
         $cacheKey = "products_r_" . ($targetId ?? 'all') . "_role_" . $role;
@@ -51,12 +51,12 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    private function clearProductCache($restaurantId = null, $productId = null)
+    private function clearProductCache($MerchantId = null, $productId = null)
     {
         $roles = ['guest', 'merchant', 'admin', 'super_admin', 'Admin', 'Super Admin'];
         foreach ($roles as $role) {
-            if ($restaurantId) {
-                Cache::forget("products_r_{$restaurantId}_role_{$role}");
+            if ($MerchantId) {
+                Cache::forget("products_r_{$MerchantId}_role_{$role}");
             }
             Cache::forget("products_r_all_role_{$role}");
             Cache::forget("products_r__role_{$role}"); // Catch null case
@@ -74,14 +74,14 @@ class ProductController extends Controller
 
         // Ownership Assignment
         if ($request->user()->role === 'merchant') {
-            $data['restaurant_id'] = $request->user()->restaurant?->id;
-            if (!$data['restaurant_id']) return response()->json(['message' => 'No restaurant found'], 400);
-        } elseif (in_array($request->user()->role, ['admin', 'super_admin', 'Admin', 'Super Admin']) && $request->has('restaurant_id')) {
-            $data['restaurant_id'] = $request->restaurant_id;
+            $data['merchant_id'] = $request->user()->merchant?->id;
+            if (!$data['merchant_id']) return response()->json(['message' => 'No Merchant found'], 400);
+        } elseif (in_array($request->user()->role, ['admin', 'super_admin', 'Admin', 'Super Admin']) && $request->has('merchant_id')) {
+            $data['merchant_id'] = $request->merchant_id;
         }
 
         $product = $this->service->createProduct($data);
-        $this->clearProductCache($product->restaurant_id);
+        $this->clearProductCache($product->merchant_id);
 
         // Broadcast refresh to mobile side
         $this->fcmService->broadcastData(['type' => 'refresh_products', 'action' => 'created', 'id' => (string)$product->id]);
@@ -95,12 +95,12 @@ class ProductController extends Controller
         if (!$product) return response()->json(['message' => 'Product not found'], 404);
 
         // Merchant Ownership Check
-        if ($request->user()->role === 'merchant' && $product->restaurant_id !== $request->user()->restaurant?->id) {
+        if ($request->user()->role === 'merchant' && $product->merchant_id !== $request->user()->merchant?->id) {
             return response()->json(['message' => 'Unauthorized access to this product'], 403);
         }
 
         $updated = $this->service->updateProduct($id, $request->validated());
-        $this->clearProductCache($product->restaurant_id, $id);
+        $this->clearProductCache($product->merchant_id, $id);
 
         // Broadcast refresh to mobile side
         $this->fcmService->broadcastData(['type' => 'refresh_products', 'action' => 'updated', 'id' => (string)$id]);
@@ -114,11 +114,11 @@ class ProductController extends Controller
         if (!$product) return response()->json(['message' => 'Product not found'], 404);
 
         // Merchant Ownership Check
-        if ($request->user()->role === 'merchant' && $product->restaurant_id !== $request->user()->restaurant?->id) {
+        if ($request->user()->role === 'merchant' && $product->merchant_id !== $request->user()->merchant?->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $resId = $product->restaurant_id;
+        $resId = $product->merchant_id;
         $this->service->deleteProduct($id);
         $this->clearProductCache($resId, $id);
 
@@ -131,21 +131,58 @@ class ProductController extends Controller
     public function addReview(Request $request, $id)
     {
         $request->validate([
-            'rating'  => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:500'
+            'order_id'   => 'required|integer|exists:orders,id',
+            'rating'     => 'required|integer|min:1|max:5',
+            'review'     => 'nullable|string|max:1000'
         ]);
 
-        $review = Review::updateOrCreate(
-            ['user_id' => $request->user()->id, 'product_id' => $id],
-            ['rating'  => $request->rating, 'comment' => $request->comment]
-        );
+        // Derive merchant from the product
+        $product = Product::findOrFail($id);
+        $merchantId = $product->merchant_id;
 
-        // Bust product cache
-        $this->clearProductCache(null, $id);
+        // Verify the order belongs to this user and merchant, and is delivered
+        $order = \App\Models\Order::where('id', $request->order_id)
+            ->where('user_id', $request->user()->id)
+            ->where('merchant_id', $merchantId)
+            ->where('status', 'delivered')
+            ->firstOrFail();
+
+        // One review per order (enforced by DB unique constraint on user_id + order_id)
+        $review = Review::updateOrCreate(
+            ['user_id' => $request->user()->id, 'order_id' => $order->id, 'product_id' => $id],
+            [
+                'merchant_id' => $merchantId,
+                'rating'      => $request->rating,
+                'review'      => $request->review,
+            ]
+        );
 
         return response()->json([
             'message' => 'Review submitted successfully',
-            'data'    => new ReviewResource($review)
+            'data'    => new ReviewResource($review->load('user'))
         ]);
     }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+            'merchant_id' => 'nullable|exists:merchants,id'
+        ]);
+
+        $merchantId = $request->merchant_id;
+        if ($request->user()->role === 'merchant') {
+            $merchantId = $request->user()->merchant?->id;
+        }
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\ProductsImport($merchantId), $request->file('file'));
+            $this->clearProductCache($merchantId);
+            
+            return response()->json(['message' => 'Products imported successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 400);
+        }
+    }
 }
+

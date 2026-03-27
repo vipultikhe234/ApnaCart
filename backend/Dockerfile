@@ -1,8 +1,8 @@
-FROM php:8.2-cli
+FROM php:8.3-cli
 
 WORKDIR /app
 
-# Install system dependencies needed for Laravel
+# Install system dependencies needed for Laravel and clear cache in a single layer to reduce image size
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -11,33 +11,37 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libzip-dev \
     libmariadb-dev-compat \
-    libmariadb-dev
+    libmariadb-dev \
+    libpq-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Clear apt cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install MySQL PDO and other essential extensions for the unified portal
-RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+# Install MySQL and PostgreSQL PDO, plus other essential extensions
+RUN docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy all application files
+# Copy composer files first to leverage Docker cache
+COPY composer.json composer.lock ./
+
+# Install dependencies without dev requirements and avoid running scripts
+RUN composer install --no-dev --no-scripts --no-autoloader
+
+# Copy the rest of the application files
 COPY . .
 
-# Install dependencies without dev requirements
-RUN composer install --no-dev --optimize-autoloader
+# Generate optimized autoload files and run post-install scripts
+RUN composer dump-autoload --optimize
 
 # Create required directories and set permissions
 RUN mkdir -p storage bootstrap/cache && \
-    chown -R www-data:www-data /app/storage /app/bootstrap/cache && \
-    chmod -R 775 /app/storage /app/bootstrap/cache
+    chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
 
-# Cache configurations, run migrations safely, and start the marketplace node
-CMD php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan view:cache && \
+# Cache configurations, run migrations safely, and start the development server
+CMD php artisan optimize:clear && \
+    php artisan optimize && \
     php artisan migrate --force && \
+    (php artisan db:seed --class=DatabaseSeeder --force || true) && \
     php artisan serve --host=0.0.0.0 --port=8000

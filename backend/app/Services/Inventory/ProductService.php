@@ -10,9 +10,9 @@ class ProductService
         protected ProductRepository $repository
     ) {}
 
-    public function getAllProducts($restaurantId = null)
+    public function getAllProducts($MerchantId = null)
     {
-        return $this->repository->getAll($restaurantId);
+        return $this->repository->getAll($MerchantId);
     }
 
     public function getProductById($id)
@@ -40,3 +40,4 @@ class ProductService
         return $this->repository->getCuratedProducts();
     }
 }
+

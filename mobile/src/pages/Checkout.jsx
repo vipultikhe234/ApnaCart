@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { couponService, orderService, addressService, restaurantService } from '../services/api';
+import { couponService, orderService, addressService, MerchantService } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePayment from '../components/StripePayment';
@@ -134,9 +134,9 @@ const Checkout = () => {
         const fetchMerchantData = async () => {
             if (cartItems.length > 0) {
                 try {
-                    const restId = cartItems[0].restaurant_id || cartItems[0].shop_id;
+                    const restId = cartItems[0].merchant_id || cartItems[0].shop_id;
                     if (restId) {
-                        const res = await restaurantService.getById(restId);
+                        const res = await MerchantService.getById(restId);
                         const data = res.data.data;
                         if (data) {
                             if (data.other_charges) setCharges(data.other_charges);
@@ -189,7 +189,8 @@ const Checkout = () => {
         setIsApplyingCoupon(true);
         setCouponApplied(null);
         try {
-            const response = await couponService.validate(couponCode, subtotal);
+            const restId = cartItems[0]?.merchant_id || cartItems[0]?.shop_id;
+            const response = await couponService.validate(couponCode, subtotal, restId);
             setCouponDiscount(response.data.discount);
             setCouponApplied({ type: 'success', message: `Saved ₹${response.data.discount}` });
         } catch (error) {
@@ -208,7 +209,7 @@ const Checkout = () => {
         setLoading(true);
         try {
             const orderData = {
-                restaurant_id: cartItems[0]?.restaurant_id,
+                merchant_id: cartItems[0]?.merchant_id,
                 idempotency_key: window.crypto.randomUUID ? window.crypto.randomUUID() : (Date.now().toString() + Math.random().toString()),
                 address_id: addresses.find(a => a.address_line === address)?.id || null,
                 delivery_address: orderType === 'pickup' ? 'Self Pickup from Store' : address,
@@ -560,3 +561,4 @@ const Checkout = () => {
 };
 
 export default Checkout;
+

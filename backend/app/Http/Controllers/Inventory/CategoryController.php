@@ -22,7 +22,7 @@ class CategoryController extends Controller
     public function index(Request $request)
     {
         $role = $request->user('sanctum')?->role ?? 'guest';
-        $targetId = $request->query('restaurant_id');
+        $targetId = $request->query('merchant_id');
 
         $cacheKey = "categories_r_" . ($targetId ?? 'all') . "_role_" . $role;
 
@@ -41,12 +41,12 @@ class CategoryController extends Controller
         });
     }
 
-    private function clearCategoryCache($restaurantId = null)
+    private function clearCategoryCache($MerchantId = null)
     {
         $roles = ['guest', 'merchant', 'admin', 'super_admin', 'Admin', 'Super Admin'];
         foreach ($roles as $role) {
-            if ($restaurantId) {
-                Cache::forget("categories_r_{$restaurantId}_role_{$role}");
+            if ($MerchantId) {
+                Cache::forget("categories_r_{$MerchantId}_role_{$role}");
             }
             Cache::forget("categories_r_all_role_{$role}");
             Cache::forget("categories_r__role_{$role}");
@@ -58,13 +58,13 @@ class CategoryController extends Controller
     {
         $data = $request->validated();
         if ($request->user()->role === 'merchant') {
-            $data['restaurant_id'] = $request->user()->restaurant?->id;
-        } elseif (in_array($request->user()->role, ['admin', 'super_admin', 'Admin', 'Super Admin']) && $request->has('restaurant_id')) {
-            $data['restaurant_id'] = $request->restaurant_id;
+            $data['merchant_id'] = $request->user()->merchant?->id;
+        } elseif (in_array($request->user()->role, ['admin', 'super_admin', 'Admin', 'Super Admin']) && $request->has('merchant_id')) {
+            $data['merchant_id'] = $request->merchant_id;
         }
 
         $category = $this->service->createCategory($data);
-        $this->clearCategoryCache($category->restaurant_id);
+        $this->clearCategoryCache($category->merchant_id);
 
         // Broadcast refresh
         $this->fcmService->broadcastData(['type' => 'refresh_categories', 'action' => 'created', 'id' => (string)$category->id]);
@@ -77,12 +77,12 @@ class CategoryController extends Controller
         $category = Category::find($id);
         if (!$category) return response()->json(['message' => 'Category not found'], 404);
 
-        if ($request->user()->role === 'merchant' && $category->restaurant_id !== $request->user()->restaurant?->id) {
+        if ($request->user()->role === 'merchant' && $category->merchant_id !== $request->user()->merchant?->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $this->service->updateCategory($id, $request->validated());
-        $this->clearCategoryCache($category->restaurant_id);
+        $this->clearCategoryCache($category->merchant_id);
 
         // Broadcast refresh
         $this->fcmService->broadcastData(['type' => 'refresh_categories', 'action' => 'updated', 'id' => (string)$id]);
@@ -95,11 +95,11 @@ class CategoryController extends Controller
         $category = Category::find($id);
         if (!$category) return response()->json(['message' => 'Category not found'], 404);
 
-        if ($request->user()->role === 'merchant' && $category->restaurant_id !== $request->user()->restaurant?->id) {
+        if ($request->user()->role === 'merchant' && $category->merchant_id !== $request->user()->merchant?->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $resId = $category->restaurant_id;
+        $resId = $category->merchant_id;
         $this->service->deleteCategory($id);
         $this->clearCategoryCache($resId);
 
@@ -109,3 +109,4 @@ class CategoryController extends Controller
         return response()->json(['message' => 'Category deleted']);
     }
 }
+

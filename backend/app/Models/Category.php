@@ -4,22 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
-use App\Traits\HasRestaurantFilter;
+use App\Traits\HasMerchantFilter;
 
 class Category extends Model
 {
-    use HasFactory, HasRestaurantFilter;
+    use HasFactory, HasMerchantFilter;
 
-    protected $fillable = ['name', 'image', 'status', 'restaurant_id'];
+    protected $fillable = ['name', 'image', 'status', 'merchant_id'];
 
     public function products()
     {
         return $this->hasMany(Product::class);
     }
 
-    public function restaurant()
+    public function merchant()
     {
-        return $this->belongsTo(Restaurant::class);
+        return $this->belongsTo(Merchant::class);
     }
 }

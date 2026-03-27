@@ -77,7 +77,7 @@ const Dashboard = () => {
     const totalRevenue = stats?.total_revenue ?? 0;
     const totalUsers = stats?.total_users ?? 0;
     const totalProducts = stats?.total_products ?? 0;
-    const totalRestaurants = stats?.total_restaurants ?? 0;
+    const totalMerchants = stats?.total_Merchants ?? 0;
     const recentCount = stats?.recent_orders_count ?? 0;
 
     const statusBreakdown = ['placed', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'picked_up', 'cancelled'].map(s => ({
@@ -90,7 +90,7 @@ const Dashboard = () => {
         { label: 'Rewards Burn', val: `₹${Number(stats?.total_discounts || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Ticket, color: 'amber', sub: 'Coupon utility', show: stats?.total_discounts !== undefined },
         { label: 'Order Volume', val: totalOrders, icon: ShoppingBag, color: 'blue', sub: `${recentCount} recent`, show: true },
         { label: 'Network Users', val: totalUsers, icon: UsersIcon, color: 'purple', sub: 'Total accounts', show: stats?.total_users !== undefined },
-        { label: 'Partner Outlets', val: totalRestaurants, icon: Store, color: 'violet', sub: 'Active nodes', show: stats?.total_restaurants !== undefined },
+        { label: 'Partner Outlets', val: totalMerchants, icon: Store, color: 'violet', sub: 'Active nodes', show: stats?.total_Merchants !== undefined },
         { label: 'Inventory Assets', val: totalProducts, icon: Package, color: 'orange', sub: 'Active menu', show: true }
     ].filter(s => s.show);
 
@@ -219,3 +219,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

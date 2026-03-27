@@ -7,16 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Inventory extends Model
 {
-    /**
-     * The table associated with the model.
-     * 
-     * @var string
-     */
     protected $table = 'inventories';
 
     protected $fillable = [
         'product_variant_id',
-        'restaurant_id',
+        'merchant_id',
         'stock',
         'reserved_stock',
         'is_available',
@@ -28,25 +23,16 @@ class Inventory extends Model
         'is_available' => 'boolean',
     ];
 
-    /**
-     * Get the variant associated with the inventory.
-     */
     public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
-    /**
-     * Get the restaurant (shop) that owns the inventory.
-     */
-    public function restaurant(): BelongsTo
+    public function merchant(): BelongsTo
     {
-        return $this->belongsTo(Restaurant::class);
+        return $this->belongsTo(Merchant::class);
     }
 
-    /**
-     * Scope for available stock (Actual stock - reserved stock).
-     */
     public function scopeAvailable($query)
     {
         return $query->where('is_available', true)

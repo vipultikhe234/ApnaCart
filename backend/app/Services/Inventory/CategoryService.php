@@ -10,9 +10,9 @@ class CategoryService
         protected CategoryRepository $repository
     ) {}
 
-    public function getAllCategories($restaurantId = null)
+    public function getAllCategories($MerchantId = null)
     {
-        return $this->repository->getAll($restaurantId);
+        return $this->repository->getAll($MerchantId);
     }
 
     public function getCategoryById(int $id)
@@ -35,3 +35,4 @@ class CategoryService
         return $this->repository->delete($id);
     }
 }
+

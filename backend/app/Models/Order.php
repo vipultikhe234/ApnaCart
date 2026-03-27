@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
-use App\Traits\HasRestaurantFilter;
+use App\Traits\HasMerchantFilter;
 
 class Order extends Model
 {
-    use HasFactory, HasRestaurantFilter;
+    use HasFactory, HasMerchantFilter;
 
     // Final Status Flow (Production Grade)
     const STATUS_PLACED = 'placed';
@@ -28,25 +27,22 @@ class Order extends Model
         'order_number',
         'idempotency_key',
         'user_id',
-        'restaurant_id',
+        'merchant_id',
         'rider_id',
         'coupon_id',
-        'total_amount',
-        'subtotal_amount',
+        'total_price',
+        'subtotal',
         'tax_amount',
         'delivery_fee',
-        'packing_charge',
+        'packaging_fee',
         'platform_fee',
-        'discount_amount',
-        'currency',
+        'coupon_discount',
+        'coupon_code',
         'address_id',
-        'address', // snapshot
+        'address_snapshot', // snapshot
         'payment_method',
         'status',
         'payment_status',
-        'payment_expires_at',
-        'total_items',
-        'total_quantity',
         'order_type',
         'notes',
         'cancellation_reason',
@@ -55,17 +51,15 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
-        'subtotal_amount' => 'decimal:2',
+        'total_price' => 'decimal:2',
+        'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
-        'packing_charge' => 'decimal:2',
+        'packaging_fee' => 'decimal:2',
         'platform_fee' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'payment_expires_at' => 'datetime',
-        'placed_at' => 'datetime',
-        'delivered_at' => 'datetime',
-        'cancelled_at' => 'datetime',
+        'coupon_discount' => 'decimal:2',
+        'estimated_delivery_time' => 'datetime',
+        'actual_delivery_time' => 'datetime',
     ];
 
     public function user()
@@ -73,9 +67,9 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function restaurant()
+    public function merchant()
     {
-        return $this->belongsTo(Restaurant::class);
+        return $this->belongsTo(Merchant::class);
     }
 
     public function coupon()
@@ -86,11 +80,6 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
-    }
-
-    public function logs()
-    {
-        return $this->hasMany(OrderStatusLog::class);
     }
 
     public function payment()
